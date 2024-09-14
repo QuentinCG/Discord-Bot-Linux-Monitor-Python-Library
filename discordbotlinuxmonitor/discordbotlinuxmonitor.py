@@ -537,7 +537,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = self.monitoring.ping_all_websites(is_private=is_private, display_only_if_critical=False)
+            out_msg: str = await self.monitoring.ping_all_websites(is_private=is_private, display_only_if_critical=False)
 
             # Respond to the user
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
@@ -579,7 +579,7 @@ class DiscordBotLinuxMonitor:
         await interaction.response.defer()
 
         try:
-            out_msg: str = self.monitoring.reboot_server()
+            out_msg: str = await self.monitoring.reboot_server()
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
 
         except Exception as e:
@@ -598,7 +598,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = self.monitoring.check_all_services_status(is_private=is_private)
+            out_msg: str = await self.monitoring.check_all_services_status(is_private=is_private)
 
             # Respond to the user
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
@@ -619,7 +619,7 @@ class DiscordBotLinuxMonitor:
         try:
             # Restart all services and get the results
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = self.monitoring.restart_all_services(is_private=is_private)
+            out_msg: str = await self.monitoring.restart_all_services(is_private=is_private)
 
             # Respond to the user
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
@@ -640,7 +640,7 @@ class DiscordBotLinuxMonitor:
         try:
             # Redémarrer le service et récupérer le message de sortie
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = self.monitoring.restart_service(is_private=is_private, service_name=service_name)
+            out_msg: str = await self.monitoring.restart_service(is_private=is_private, service_name=service_name)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
@@ -683,7 +683,7 @@ class DiscordBotLinuxMonitor:
         try:
             # Récupérer le statut des ports
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = self.monitoring.check_all_ports(restart_if_down=True, is_private=is_private, display_only_if_critical=False)
+            out_msg: str = await self.monitoring.check_all_ports(restart_if_down=True, is_private=is_private, display_only_if_critical=False)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
@@ -729,7 +729,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             # Arrêter le processus et récupérer le message de sortie
-            out_msg: str = self.monitoring.kill_process(pid=pid)
+            out_msg: str = await self.monitoring.kill_process(pid=pid)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
