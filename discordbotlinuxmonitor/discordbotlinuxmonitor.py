@@ -30,7 +30,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2024)"
 __python_version__ = "3.+"
-__version__ = "1.1.0 (2024/09/14)"
+__version__ = "1.1.1 (2024/09/14)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
