@@ -1,3 +1,38 @@
+"""
+Discord bot to:
+    - monitor a Linux server and inform about its status (in case of issues or periodical info) through Discord channels
+    - execute commands from Discord channels
+
+Non exhaustive list of features (available by using it in shell or in python script):
+    - Do all checks bellow in a scheduled tasks and display the results only if there is an issue (only in console if using only the library)
+    - Do all checks bellow in a scheduled tasks and display the results every time (only in console if using only the library)
+
+    - Check CPU, RAM, SWAP, Temperature
+    - Check disk usage
+    - Check folder usage
+    - Check websites basic availability (ping)
+    - Check services status and restart them if needed
+    - Check certificates expiration and validity
+    - Check last user connections IPs
+    - Check uptime (to inform if the server has been rebooted)
+
+    - Get hostname, OS details, kernel version, server datetime, uptime
+    - Get connected users
+
+    - Get processes list (PID and name)
+    - Kill a process by PID
+
+    - Reboot server
+"""
+
+__author__ = 'Quentin Comte-Gaz'
+__email__ = "quentin@comte-gaz.com"
+__license__ = "MIT License"
+__copyright__ = "Copyright Quentin Comte-Gaz (2024)"
+__python_version__ = "3.+"
+__version__ = "1.0.1 (2024/09/14)"
+__status__ = "Usable for any Linux project"
+
 # pyright: reportMissingTypeStubs=false
 from linuxmonitor import LinuxMonitor
 
