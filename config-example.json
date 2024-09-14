@@ -1,0 +1,209 @@
+{
+    "discord_config": {
+        "### EXPLANATION OF: server_id ###": "https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID",
+        "server_id": 1234567890123456789,
+
+        "### EXPLANATION OF: server_token ###": "Create a new application here and don't forget to link it to your server and allow access to private channels you specify bellow: https://discord.com/developers/applications",
+        "server_token": "YOUR SERVER TOKEN HERE",
+
+        "### EXPLANATION OF: command_prefix ###": "Prefix to use to call the bot - Empty to not have any prefix",
+        "command_prefix": "/",
+
+        "### EXPLANATION OF: channel_name_for_private_commands ###": "Discord channel to ask private and public command - Empty to not have private command handling",
+        "channel_name_for_private_commands": "🤖 Private Linux monitor CMD 🤖",
+
+        "### EXPLANATION OF: channel_name_for_public_commands ###": "Discord channel to ask public command - Empty to not have public command handling",
+        "channel_name_for_public_commands": "🤖 Public Linux monitor CMD 🤖",
+
+        "### EXPLANATION OF: channel_name_for_private_error_tasks ###": "Discord channel where where periodic task will show private and public status issue - Empty to not have public status issue channel",
+        "channel_name_for_private_error_tasks": "⚠️ Private Linux issues detection ⚠️",
+
+        "### EXPLANATION OF: channel_name_for_public_error_tasks ###": "Discord channel where periodic task will show public status issue - Empty to not have public status issue channel",
+        "channel_name_for_public_error_tasks": "",
+
+        "### EXPLANATION OF: channel_name_for_private_infos_tasks ###": "Discord channel where periodic task will show all private info periodically (spam channel) - Empty to not have periodic private channel info",
+        "channel_name_for_private_infos_tasks": "📢 Private Linux periodic state info 📢",
+
+        "### EXPLANATION OF: channel_name_for_public_infos_tasks ###": "Discord channel where periodic task will show all public info periodically (spam channel) - Empty to not have periodic public channel info",
+        "channel_name_for_public_infos_tasks": "",
+
+        "### EXPLANATION OF ALL: welcome_message_for_XXXXX ###": "Message to show when the bot is started specific channel - Empty to not have any message - if not empty and no message sent, it means there is an issue with the bot configuration (no access, ...) so you can check the logs to see what's wrong",
+        "welcome_message_for_private_commands": "🤖 Linux Monitoring bot started 🤖\n😏 I’m ready to fulfill all your wildest desires 😏\nTo see the available public commands, type `/` in this channel.",
+        "welcome_message_for_public_commands": "🤖 Linux Monitoring bot started 🤖\n😏 I’m ready to fulfill all your wildest desires 😏\nTo see all available commands, type `/` in this channel.",
+        "welcome_message_for_private_error_tasks": "🤖 Linux Monitoring bot started 🤖\nI'll inform you if anything private or public goes wrong in the Linux server.",
+        "welcome_message_for_public_error_tasks": "🤖 Linux Monitoring bot started 🤖\nI'll inform you if anything public goes wrong in the Linux server.",
+        "welcome_message_for_private_infos_tasks": "🤖 Linux Monitoring bot started 🤖\nI'll inform you periodically about the Linux server public and private status.",
+        "welcome_message_for_public_infos_tasks": "🤖 Linux Monitoring bot started 🤖\nI'll inform you periodically about the Linux server public status."
+    },
+    "basic_config": {
+        "critical_cpu_percent": 90.0,
+        "warning_cpu_percent": 80.0,
+        "critical_ram_percent": 90.0,
+        "warning_ram_percent": 80.0,
+        "critical_swap_percent": 90.0,
+        "warning_swap_percent": 80.0,
+        "critical_temperature_celsius": 80.0,
+        "warning_temperature_celsius": 70.0
+    },
+    "scheduled_tasks_check_for_issues": {
+        "max_duration_seconds_showing_same_error": 10,
+        "start_immediately": false,
+        "duration_in_sec_wait_between_each_execution": 1800
+    },
+    "scheduled_tasks_show_infos": {
+        "start_immediately": false,
+        "duration_in_sec_wait_between_each_execution": 86400
+    },
+    "pings": [
+        {
+            "website": "google.com",
+            "display_name": "Google",
+            "timeout_in_sec": 5,
+            "is_private": false
+        },
+        {
+            "website": "www.google.com",
+            "display_name": "Google (WWW)",
+            "timeout_in_sec": 5,
+            "is_private": false
+        },
+        {
+            "website": "123.123.123.123",
+            "display_name": "A great dummy IP",
+            "timeout_in_sec": 5,
+            "is_private": true
+        }
+    ],
+    "disks": [
+        {
+            "device": "/",
+            "display_name": "Main hard drive",
+            "warning_percent": 60,
+            "critical_percent": 80,
+            "is_private": false
+        },
+        {
+            "device": "/boot",
+            "display_name": "Boot drive",
+            "warning_percent": 60,
+            "critical_percent": 80,
+            "is_private": true
+        }
+    ],
+    "folders": [
+        {
+            "folder_path": "/var/www/",
+            "display_name": "Base apache folder",
+            "warning_usage_giga": 20,
+            "critical_usage_giga": 100,
+            "is_private": false
+        },
+        {
+            "folder_path": "/var/log/",
+            "display_name": "Log folder",
+            "warning_usage_giga": 15,
+            "critical_usage_giga": 40,
+            "is_private": true
+        }
+    ],
+    "services":
+    {
+        "web": {
+            "display_name": "Web server (Apache)",
+            "restart_command": ["sudo", "/etc/init.d/apache2", "restart"],
+            "status_command": ["sudo", "/etc/init.d/apache2", "status"],
+            "timeout_in_sec": 30,
+            "is_private": false
+        },
+        "sql": {
+            "display_name": "SQL server (MariaDB)",
+            "restart_command": ["sudo", "/etc/init.d/mariadb", "restart"],
+            "status_command": ["sudo", "/etc/init.d/mariadb", "status"],
+            "timeout_in_sec": 30,
+            "is_private": false
+        },
+        "rdp": {
+            "display_name": "RDP (xrdp)",
+            "restart_command": ["sudo", "systemctl", "restart", "xrdp"],
+            "status_command": ["sudo", "systemctl", "is-active", "xrdp"],
+            "timeout_in_sec": 30,
+            "is_private": true
+        }
+    },
+    "certificates": [
+        {
+            "website": "amazon.com",
+            "display_name": "Example of valid certificate",
+            "warning_remaining_days": 15,
+            "critical_remaining_days": 5,
+            "is_private": false
+        },
+        {
+            "website": "www.amazon.com",
+            "display_name": "Example of requested 4000 days certificate (for error catching example only)",
+            "warning_remaining_days": 8000,
+            "critical_remaining_days": 4000,
+            "is_private": true
+        },
+        {
+            "website": "expired.badssl.com",
+            "display_name": "Example of expired certificate (considered invalid)",
+            "warning_remaining_days": 15,
+            "critical_remaining_days": 5,
+            "is_private": true
+        },
+        {
+            "website": "self-signed.badssl.com",
+            "display_name": "Example of self-signed certificate (considered invalid)",
+            "warning_remaining_days": 15,
+            "critical_remaining_days": 5,
+            "is_private": true
+        }
+    ],
+    "recent_user_connections": {
+        "allow_all": false,
+        "max_days": 30,
+        "allowed_ips": [
+            "111.222.111.222",
+            "123.123.123.123"
+        ]
+    },
+    "ports": [
+        {
+            "port": 80,
+            "host": "localhost",
+            "display_name": "Web server (unsecured)",
+            "want_port_to_be_open": true,
+            "service_name_to_restart": "web",
+            "timeout_in_sec": 5,
+            "is_private": false
+        },
+        {
+            "port": 443,
+            "host": "localhost",
+            "display_name": "Web server (secured)",
+            "want_port_to_be_open": true,
+            "service_name_to_restart": "web",
+            "timeout_in_sec": 5,
+            "is_private": false
+        },
+        {
+            "port": 3306,
+            "host": "localhost",
+            "display_name": "SQL Server (internal)",
+            "want_port_to_be_open": true,
+            "service_name_to_restart": "sql",
+            "timeout_in_sec": 10,
+            "is_private": false
+        },
+        {
+            "port": 3389,
+            "host": "localhost",
+            "display_name": "RDP",
+            "want_port_to_be_open": true,
+            "service_name_to_restart": "rdp",
+            "timeout_in_sec": 10,
+            "is_private": true
+        }
+    ]
+}
