@@ -11,7 +11,7 @@ def main() -> None:
 
     # Define available arguments
     parser.add_argument('--config_file', type=str, required=True, help='Path to the configuration file (must be a JSON file)')
-    parser.add_argument('--force_sync_on_startup', type=bool, required=True, help='Force discord command synchronization on startup (do it only the first time, because after, you will have a discord command to do it if really needed)')
+    parser.add_argument('--force_sync_on_startup', action='store_true', help='Force discord command synchronization on startup (do it only the first time, because after, you will have a discord command to do it if really needed)')
 
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('--nodebug', action='store_true', help='Disable all logs')
@@ -35,12 +35,10 @@ def main() -> None:
         sys.exit(1)
     config_file: str = args.config_file
 
-    # Ensure the force_sync_on_startup is provided
-    if not args.force_sync_on_startup:
-        print("Error: --force_sync_on_startup is required")
-        parser.print_help()
-        sys.exit(1)
-    force_sync_on_startup: bool = args.force_sync_on_startup
+    # Check if force_sync_on_startup is provided
+    force_sync_on_startup: bool = False
+    if args.force_sync_on_startup:
+        force_sync_on_startup = True
 
     # Prepare the Discord bot (will throw an exception if the configuration is invalid)
     discord_bot_linux_monitor = DiscordBotLinuxMonitor(config_file=config_file, force_sync_on_startup=force_sync_on_startup)

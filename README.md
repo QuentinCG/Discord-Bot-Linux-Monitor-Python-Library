@@ -81,10 +81,10 @@ python3 -m discordbotlinuxmonitor --help
 # Use "--nodebug" to not show any warning information during command
 
 # Start the discord bot Linux monitor (First time)
-python3 -m discordbotlinuxmonitor --config_file config-example.json --force_sync_on_startup True --debug
+python3 -m discordbotlinuxmonitor --config_file config-example.json --force_sync_on_startup --debug
 
 # Start the discord bot Linux monitor (after first time)
-python3 -m discordbotlinuxmonitor --config_file config-example.json --force_sync_on_startup False
+python3 -m discordbotlinuxmonitor --config_file config-example.json
 ```
   - Go to discord (restart discord if you were already in it)
   - You should see welcome messages on channels you configured in the config file and be able to communicate with the bot using command defined in previous section
@@ -138,7 +138,7 @@ Description=Discord Bot Linux Monitor Service
 After=network.target
 
 [Service]
-ExecStart=/home/$DISCORD_BOT_SERVICE_USER/venv/bin/python3 -m discordbotlinuxmonitor --config_file ${DISCORD_BOT_FOLDER}config.json --force_sync_on_startup False
+ExecStart=/home/$DISCORD_BOT_SERVICE_USER/venv/bin/python3 -m discordbotlinuxmonitor --config_file ${DISCORD_BOT_FOLDER}config.json
 WorkingDirectory=$DISCORD_BOT_FOLDER
 User=$DISCORD_BOT_SERVICE_USER
 Group=$DISCORD_BOT_SERVICE_GROUP
