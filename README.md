@@ -99,7 +99,7 @@ DISCORD_BOT_SERVICE_USER="discordbotlinuxmonitor"
 DISCORD_BOT_SERVICE_GROUP="discordbotlinuxmonitor"
 DISCORD_BOT_SERVICE_NAME="discord-bot"
 DISCORD_BOT_SERVICE_FILE="/etc/systemd/system/${DISCORD_BOT_SERVICE_NAME}.service"
-DISCORD_BOT_FOLDER="/opt/Discord/"
+DISCORD_BOT_FOLDER="/opt/DiscordBot/"
 
 ### Add rights to user launching the library depending on what you want it to do ###
 # Only if this library should be able to reboot the server on demand:
@@ -138,7 +138,7 @@ Description=Discord Bot Linux Monitor Service
 After=network.target
 
 [Service]
-ExecStart=/home/$DISCORD_BOT_SERVICE_USER/venv/bin/python3 -m discordbotlinuxmonitor --config_file ${DISCORD_BOT_FOLDER}config.json
+ExecStart=/home/$DISCORD_BOT_SERVICE_USER/venv/bin/python3 -m discordbotlinuxmonitor --config_file ${DISCORD_BOT_FOLDER}config.json --force_sync_on_startup False
 WorkingDirectory=$DISCORD_BOT_FOLDER
 User=$DISCORD_BOT_SERVICE_USER
 Group=$DISCORD_BOT_SERVICE_GROUP
