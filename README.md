@@ -9,7 +9,7 @@ It is possible to have separate 'private discord channel' and 'public discord ch
  - Sendind discord commands to the bot (visual example in next section)
  - Getting periodic status of the Linux server (doing periodically some commands from next section)
  - Getting warnings if there is an issue in the Linux server (periodic status check)
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/warning_from_periodic_check.jpg" height="300">
+  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/warning_from_periodic_check.jpg" height="400">
 
 It is compatible with python 3+ and usable only on Linux.
 
@@ -19,38 +19,23 @@ It is compatible with python 3+ and usable only on Linux.
 ## List of Discord commands:
 
  - Public and private discord channel commands (info are not the same if you ask it in private or public channel, all info are displayed in private channel):
-  - `/usage`: 📊 View disk space, CPU, RAM, ... 📊
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/usage.jpg" height="100">
-  - `/os_infos`: 🖥 View basic system information 🖥
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/os_infos.jpg" height="100">
-  - `/ping`: 🌐 Ping websites 🌐
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/ping.jpg" height="100">
-  - `/certificates`: 🔒 Check SSL certificates 🔒
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/certificates.jpg" height="100">
-  - `/services_status`: 🩺 Check services are running 🩺
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/services_status.jpg" height="100">
-  - `/restart_all`: 🚀 Restart all services 🚀
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/restart_all.jpg" height="100">
-  - `/restart_service {service_name}`: 🚀 Restart a service 🚀
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/restart_service.jpg" height="100">
-  - `/list_services`: 📋 List all available services 📋
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_services.jpg" height="100">
-  - `/ports`: 🔒 Check ports 🔒
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/ports.jpg" height="100">
+  - `/usage`: 📊 View disk space, CPU, RAM, ... 📊 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/usage.jpg" height="200">
+  - `/os_infos`: 🖥 View basic system information 🖥 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/os_infos.jpg" height="200">
+  - `/ping`: 🌐 Ping websites 🌐 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/ping.jpg" height="200">
+  - `/certificates`: 🔒 Check SSL certificates 🔒 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/certificates.jpg" height="200">
+  - `/services_status`: 🩺 Check services are running 🩺 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/services_status.jpg" height="200">
+  - `/restart_all`: 🚀 Restart all services 🚀 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/restart_all.jpg" height="200">
+  - `/restart_service {service_name}`: 🚀 Restart a service 🚀 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/restart_service.jpg" height="200">
+  - `/list_services`: 📋 List all available services 📋 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_services.jpg" height="200">
+  - `/ports`: 🔒 Check ports 🔒 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/ports.jpg" height="200">
 
  - Private discord channel commands:
- - `/force_sync`: 🔄 Force discord command synchronization 🔄
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/force_sync.jpg" height="100">
- - `/users`: 👥 View connected users 👥
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/users.jpg" height="100">
- - `/user_logins`: 👥 View last user connections 👥
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/user_logins.jpg" height="100">
- - `/reboot_server`: 🔄 Restart the entire server 🔄
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/reboot_server.jpg" height="100">
- - `/list_processes`: 📋 List active processes 📋
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_processes.jpg" height="100">
- - `/kill_process`: 🚫 Stop a process by PID 🚫
-  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/kill_process.jpg" height="100">
+  - `/force_sync`: 🔄 Force discord command synchronization 🔄 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/force_sync.jpg" height="200">
+  - `/users`: 👥 View connected users 👥 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/users.jpg" height="200">
+  - `/user_logins`: 👥 View last user connections 👥 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/user_logins.jpg" height="200">
+  - `/reboot_server`: 🔄 Restart the entire server 🔄 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/reboot_server.jpg" height="200">
+  - `/list_processes`: 📋 List active processes 📋 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_processes.jpg" height="200">
+  - `/kill_process`: 🚫 Stop a process by PID 🚫 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/kill_process.jpg" height="200">
 
 ## How to install (for first launch)
 
