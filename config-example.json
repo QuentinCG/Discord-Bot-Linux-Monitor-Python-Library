@@ -43,7 +43,9 @@
         "critical_swap_percent": 90.0,
         "warning_swap_percent": 80.0,
         "critical_temperature_celsius": 80.0,
-        "warning_temperature_celsius": 70.0
+        "warning_temperature_celsius": 70.0,
+        "critical_uptime_seconds": 600,
+        "warning_uptime_seconds": 3600
     },
     "scheduled_tasks_check_for_issues": {
         "max_duration_seconds_showing_same_error": 10,

@@ -49,67 +49,67 @@ def main() -> None:
     #region BOT COMMANDS AND EVENTS REGIRSTRATION
 
     @discord_bot.event
-    async def on_ready() -> None:
+    async def on_ready() -> None: # type: ignore
         await discord_bot_linux_monitor.on_ready()
 
     @discord_bot.tree.command(name="force_sync", description="[Private] 🔄 Force command synchronization 🔄")
-    async def force_sync(interaction: discord.Interaction) -> None:
+    async def force_sync(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.force_sync(interaction)
 
     @discord_bot.tree.command(name="usage", description="📊 View disk space, CPU, RAM, ... 📊")
-    async def usage(interaction: discord.Interaction) -> None:
+    async def usage(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.usage(interaction)
 
     @discord_bot.tree.command(name="os_infos", description="🖥️ View basic system information 🖥️")
-    async def os_infos(interaction: discord.Interaction) -> None:
+    async def os_infos(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.os_infos(interaction)
 
     @discord_bot.tree.command(name="users", description="[Private] 👥 View connected users 👥")
-    async def users(interaction: discord.Interaction) -> None:
+    async def users(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.users(interaction)
 
     @discord_bot.tree.command(name="user_logins", description="[Private] 👥 View last user connections 👥")
-    async def user_logins(interaction: discord.Interaction) -> None:
+    async def user_logins(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.user_logins(interaction)
 
     @discord_bot.tree.command(name="ping", description="🌐 Ping websites 🌐")
-    async def ping(interaction: discord.Interaction) -> None:
+    async def ping(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.ping(interaction)
 
     @discord_bot.tree.command(name="certificates", description="🔒 Check SSL certificates 🔒")
-    async def certificates(interaction: discord.Interaction) -> None:
+    async def certificates(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.certificates(interaction)
 
     @discord_bot.tree.command(name="reboot_server", description="[Private] 🔄 Restart the entire server 🔄")
-    async def reboot(interaction: discord.Interaction) -> None:
+    async def reboot(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.reboot(interaction)
 
     @discord_bot.tree.command(name="services_status", description="🩺 Check services are running 🩺")
-    async def services_status(interaction: discord.Interaction) -> None:
+    async def services_status(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.services_status(interaction)
 
     @discord_bot.tree.command(name="restart_all", description="🚀 Restart all services 🚀")
-    async def restart_all(interaction: discord.Interaction) -> None:
+    async def restart_all(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.restart_all(interaction)
 
     @discord_bot.tree.command(name="restart_service", description="🚀 Restart a service 🚀")
-    async def restart_service(interaction: discord.Interaction, service_name: str) -> None:
+    async def restart_service(interaction: discord.Interaction, service_name: str) -> None: # type: ignore
         await discord_bot_linux_monitor.restart_service(interaction, service_name)
 
     @discord_bot.tree.command(name="list_services", description="📋 List all available services 📋")
-    async def list_services(interaction: discord.Interaction) -> None:
+    async def list_services(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.list_services(interaction)
 
     @discord_bot.tree.command(name="ports", description="🔒 Check ports 🔒")
-    async def ports(interaction: discord.Interaction) -> None:
+    async def ports(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.ports(interaction)
 
     @discord_bot.tree.command(name="list_processes", description="[Private] 📋 List active processes 📋")
-    async def list_processes(interaction: discord.Interaction) -> None:
+    async def list_processes(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.list_processes(interaction)
 
     @discord_bot.tree.command(name="kill_process", description="[Private] 🚫 Stop a process by PID 🚫")
-    async def kill_process(interaction: discord.Interaction, pid: int) -> None:
+    async def kill_process(interaction: discord.Interaction, pid: int) -> None: # type: ignore
         await discord_bot_linux_monitor.kill_process(interaction, pid)
 
     #endregion

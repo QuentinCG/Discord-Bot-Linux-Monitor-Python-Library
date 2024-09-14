@@ -10,13 +10,12 @@ It is possible to have separate 'private discord channel' and 'public discord ch
  - Getting periodic status of the Linux server (doing periodically some commands from next section)
  - Getting warnings if there is an issue in the Linux server (periodic status check)
 
-Example: of warning
+Example of warning:
   <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/warning_from_periodic_check.jpg" height="400">
 
 It is compatible with python 3+ and usable only on Linux.
 
 <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/discord.png" width="300">
-<img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/welcome.png" width="300">
 
 ## List of Discord commands:
 
@@ -120,12 +119,12 @@ sudo mkdir -p /home/$DISCORD_BOT_SERVICE_USER
 sudo chown $DISCORD_BOT_SERVICE_USER:$DISCORD_BOT_SERVICE_GROUP /home/$DISCORD_BOT_SERVICE_USER
 sudo usermod -d /home/$DISCORD_BOT_SERVICE_USER $DISCORD_BOT_SERVICE_USER
 
-### Install DiscordBotLinuxMonitor for the user ###
+### Install DiscordBotLinuxMonitor lib for the user ###
 echo "Installing DiscordBotLinuxMonitor for user $DISCORD_BOT_SERVICE_USER..."
 sudo -u $DISCORD_BOT_SERVICE_USER -s
 python3 -m venv /home/$DISCORD_BOT_SERVICE_USER/venv
 source /home/$DISCORD_BOT_SERVICE_USER/venv/bin/activate
-pip3 install -U DiscordBotLinuxMonitor
+python3 -m pip install discordbotlinuxmonitor
 deactivate
 exit
 
@@ -136,7 +135,7 @@ Description=Discord Bot Linux Monitor Service
 After=network.target
 
 [Service]
-ExecStart=/home/seedboxdiscord/venv/bin/python3 -m discordbotlinuxmonitor --config_file config.json
+ExecStart=/home/$DISCORD_BOT_SERVICE_USER/venv/bin/python3 -m discordbotlinuxmonitor --config_file config.json
 WorkingDirectory=$DISCORD_BOT_FOLDER
 User=$DISCORD_BOT_SERVICE_USER
 Group=$DISCORD_BOT_SERVICE_GROUP
