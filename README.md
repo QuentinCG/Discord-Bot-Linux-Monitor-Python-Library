@@ -20,7 +20,9 @@ It is compatible with python 3+ and usable only on Linux.
 
 ## List of Discord commands:
 
-### Public and private discord channel commands (info are not the same if you ask it in private or public channel, all info are displayed in private channel):
+### Public and private discord channel commands
+Displayed infos are not the same if you do the command in private or public channel (all info are displayed in private channel, some are hidden from public channels)
+
  - `/usage`: 📊 View disk space, CPU, RAM, ... 📊
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/usage.jpg" height="400">
 
