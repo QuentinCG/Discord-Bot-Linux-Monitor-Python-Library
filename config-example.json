@@ -48,8 +48,8 @@
         "warning_uptime_seconds": 3600
     },
     "scheduled_tasks_check_for_issues": {
-        "max_duration_seconds_showing_same_error": 10,
-        "start_immediately": false,
+        "max_duration_seconds_showing_same_error": 36000,
+        "start_immediately": true,
         "duration_in_sec_wait_between_each_execution": 1800
     },
     "scheduled_tasks_show_infos": {

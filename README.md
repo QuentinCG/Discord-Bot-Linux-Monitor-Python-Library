@@ -71,7 +71,7 @@ Displayed infos are not the same if you do the command in private or public chan
 
 ## How to install (for first launch)
 
-  - Install package calling `pip install discordbotlinuxmonitor` (or `python setup.py install` from the root of this repository)
+  - Install package calling `python -m pip install discordbotlinuxmonitor` (or `python setup.py install` from the root of this repository)
   - Copy and edit [config-example.json file](https://github.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/blob/master/config-example.json) depending on your need (on first launch, remove all `restart_command` from config file to prevent potential looping service restart issues on your server in case your config file is not well configured)
   - Launch the lib for testing it works:
 ```shell
