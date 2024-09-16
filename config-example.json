@@ -80,30 +80,37 @@
         {
             "url": "https://google.com",
             "display_name": "Google",
-            "additional_allowed_statuses": [401],
+            "timeout_in_sec": 5,
             "is_private": false
         },
         {
-            "url": "www.basicauth.dummysupersecuredwebsite.com",
+            "url": "https://mock.codes/404",
+            "display_name": "Example 404 not allowed website",
+            "timeout_in_sec": 5,
+            "is_private": true
+        },
+        {
+            "url": "https://mock.codes/401",
+            "display_name": "Example 401 allowed website",
+            "additional_allowed_statuses": [401],
+            "timeout_in_sec": 5,
+            "is_private": true
+        },
+        {
+            "url": "https://postman-echo.com/basic-auth",
             "display_name": "Basic auth website",
             "auth_type": "basic",
-            "username": "admin",
-            "password": "azerty",
+            "username": "postman",
+            "password": "password",
+            "timeout_in_sec": 5,
             "is_private": true
         },
         {
-            "url": "www.digestauth.dummysupersecuredwebsite.com",
-            "display_name": "Digest auth website",
-            "auth_type": "digest",
-            "username": "admin",
-            "password": "azerty",
-            "is_private": true
-        },
-        {
-            "url": "www.bearerauth.dummysupersecuredwebsite.com",
-            "display_name": "Bearer auth website",
+            "url": "https://postman-echo.com/bearer-auth",
+            "display_name": "Bearer auth website (no mock, will fail)",
             "auth_type": "bearer",
-            "token": "azerty",
+            "token": "12345678901234567890",
+            "timeout_in_sec": 5,
             "is_private": true
         }
     ],
