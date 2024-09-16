@@ -76,6 +76,37 @@
             "is_private": true
         }
     ],
+    "websites": [
+        {
+            "url": "https://google.com",
+            "display_name": "Google",
+            "additional_allowed_statuses": [401],
+            "is_private": false
+        },
+        {
+            "url": "www.basicauth.dummysupersecuredwebsite.com",
+            "display_name": "Basic auth website",
+            "auth_type": "basic",
+            "username": "admin",
+            "password": "azerty",
+            "is_private": true
+        },
+        {
+            "url": "www.digestauth.dummysupersecuredwebsite.com",
+            "display_name": "Digest auth website",
+            "auth_type": "digest",
+            "username": "admin",
+            "password": "azerty",
+            "is_private": true
+        },
+        {
+            "url": "www.bearerauth.dummysupersecuredwebsite.com",
+            "display_name": "Bearer auth website",
+            "auth_type": "bearer",
+            "token": "azerty",
+            "is_private": true
+        }
+    ],
     "disks": [
         {
             "device": "/",

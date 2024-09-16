@@ -11,6 +11,7 @@ Non exhaustive list of features (available by using it in shell or in python scr
     - Check disk usage
     - Check folder usage
     - Check websites basic availability (ping)
+    - Check websites access with optional authentication (GET request)
     - Check services status and restart them if needed
     - Check certificates expiration and validity
     - Check last user connections IPs
@@ -543,6 +544,26 @@ class DiscordBotLinuxMonitor:
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error during websites ping **:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+
+    async def websites(self, interaction: discord.Interaction) -> None:
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+        
+        # Say to the user that the command is being processed
+        await interaction.response.defer()
+
+        try:
+            is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
+            out_msg: str = await self.monitoring.check_all_websites(is_private=is_private, display_only_if_critical=False)
+
+            # Respond to the user
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+        except Exception as e:
+            out_msg = f"**Internal error during websites access check **:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
 

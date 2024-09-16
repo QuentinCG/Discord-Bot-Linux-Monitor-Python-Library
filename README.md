@@ -31,6 +31,9 @@ Displayed infos are not the same if you do the command in private or public chan
  - `/ping`: 🌐 Ping websites 🌐
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/ping.jpg" height="150">
 
+ - `/websites`: 🌐 Check websites access (GET requests) 🌐
+ <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/websites.jpg" height="150">
+
  - `/certificates`: 🔒 Check SSL certificates 🔒
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/certificates.jpg" height="400">
 

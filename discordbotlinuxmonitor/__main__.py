@@ -74,6 +74,10 @@ def main() -> None:
     async def ping(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.ping(interaction)
 
+    @discord_bot.tree.command(name="websites", description="🌐 Check websites access (GET requests) 🌐")
+    async def websites(interaction: discord.Interaction) -> None: # type: ignore
+        await discord_bot_linux_monitor.websites(interaction)
+
     @discord_bot.tree.command(name="certificates", description="🔒 Check SSL certificates 🔒")
     async def certificates(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.certificates(interaction)
