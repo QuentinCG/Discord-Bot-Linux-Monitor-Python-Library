@@ -6,7 +6,7 @@ with io.open(file='README.md', mode='r', encoding='utf-8') as readme_file:
 
 setup(
     name="DiscordBotLinuxMonitor",
-    version="1.2.1",
+    version="1.2.2",
     description="From discord channels: Get information and warning status of Linux server like service, port, ping, ssl certificate, disk/folder/cpu/ram/swap usage, ip connection, ... (Python and shell library, Linux ONLY)",
     long_description=readme,
     long_description_content_type="text/markdown",
