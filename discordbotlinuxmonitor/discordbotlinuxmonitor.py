@@ -558,7 +558,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = await self.monitoring.check_all_websites(is_private=is_private, display_only_if_critical=False)
+            out_msg: str = await self.monitoring.check_all_websites(is_private=is_private, display_only_if_critical=False, restart_if_down=True)
 
             # Respond to the user
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
@@ -704,7 +704,7 @@ class DiscordBotLinuxMonitor:
         try:
             # Récupérer le statut des ports
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = await self.monitoring.check_all_ports(restart_if_down=True, is_private=is_private, display_only_if_critical=False)
+            out_msg: str = await self.monitoring.check_all_ports(is_private=is_private, display_only_if_critical=False, restart_if_down=True)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
