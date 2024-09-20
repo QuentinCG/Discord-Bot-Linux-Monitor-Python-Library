@@ -20,6 +20,8 @@ Non exhaustive list of features (available by using it in shell or in python scr
     - Get hostname, OS details, kernel version, server datetime, uptime
     - Get connected users
 
+    - Restart/Stop a service
+
     - Get processes list (PID and name)
     - Kill a process by PID
 
@@ -31,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2024)"
 __python_version__ = "3.+"
-__version__ = "1.2.2 (2024/09/19)"
+__version__ = "1.3.0 (2024/09/19)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -558,7 +560,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = await self.monitoring.check_all_websites(is_private=is_private, display_only_if_critical=False, restart_if_down=True)
+            out_msg: str = await self.monitoring.check_all_websites(is_private=is_private, display_only_if_critical=False)
 
             # Respond to the user
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
@@ -661,13 +663,34 @@ class DiscordBotLinuxMonitor:
         try:
             # Redémarrer le service et récupérer le message de sortie
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = await self.monitoring.restart_service(is_private=is_private, service_name=service_name)
+            out_msg: str = await self.monitoring.restart_service(is_private=is_private, service_name=service_name, force_restart=True)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
 
         except Exception as e:
             out_msg = f"**Internal error restarting service {service_name}**:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+
+    async def stop_service(self, interaction: discord.Interaction, service_name: str) -> None:
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+
+        # Indiquer que la commande est en cours de traitement
+        await interaction.response.defer()
+
+        try:
+            # Arrêter le service et récupérer le message de sortie
+            is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
+            out_msg: str = await self.monitoring.stop_service(is_private=is_private, service_name=service_name)
+
+            # Répondre à l'utilisateur
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+        except Exception as e:
+            out_msg = f"**Internal error stopping service {service_name}**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
 
@@ -683,7 +706,7 @@ class DiscordBotLinuxMonitor:
         try:
             # Récupérer la liste des services
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = self.monitoring.get_all_services_allowed_to_restart(is_private=is_private)
+            out_msg: str = self.monitoring.get_all_services(is_private=is_private)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
@@ -704,7 +727,7 @@ class DiscordBotLinuxMonitor:
         try:
             # Récupérer le statut des ports
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = await self.monitoring.check_all_ports(is_private=is_private, display_only_if_critical=False, restart_if_down=True)
+            out_msg: str = await self.monitoring.check_all_ports(is_private=is_private, display_only_if_critical=False)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)

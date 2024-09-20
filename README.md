@@ -46,6 +46,8 @@ Displayed infos are not the same if you do the command in private or public chan
  - `/restart_service {service_name}`: 🚀 Restart a service 🚀
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/restart_service.jpg" height="150">
 
+ - `/stop_service {service_name}`: 🚫 Stop a service 🚫
+
  - `/list_services`: 📋 List all available services 📋
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_services.jpg" height="150">
 

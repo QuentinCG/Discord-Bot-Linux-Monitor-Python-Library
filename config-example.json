@@ -152,24 +152,28 @@
     {
         "web": {
             "display_name": "Web server (Apache)",
-            "restart_command": ["sudo", "/etc/init.d/apache2", "restart"],
-            "status_command": ["sudo", "/etc/init.d/apache2", "status"],
+            "restart_command": "sudo /etc/init.d/apache2 restart",
+            "status_command": "sudo /etc/init.d/apache2 status",
             "timeout_in_sec": 30,
-            "is_private": false
+            "is_private": false,
+            "auto_restart": true
         },
         "sql": {
             "display_name": "SQL server (MariaDB)",
-            "restart_command": ["sudo", "/etc/init.d/mariadb", "restart"],
-            "status_command": ["sudo", "/etc/init.d/mariadb", "status"],
+            "restart_command": "sudo /etc/init.d/mariadb restart",
+            "status_command": "sudo /etc/init.d/mariadb status",
             "timeout_in_sec": 30,
-            "is_private": false
+            "is_private": false,
+            "auto_restart": true
         },
         "rdp": {
             "display_name": "RDP (xrdp)",
-            "restart_command": ["sudo", "systemctl", "restart", "xrdp"],
-            "status_command": ["sudo", "systemctl", "is-active", "xrdp"],
+            "restart_command": "sudo systemctl restart xrdp",
+            "stop_command": "sudo systemctl stop xrdp",
+            "status_command": "sudo systemctl is-active xrdp",
             "timeout_in_sec": 30,
-            "is_private": true
+            "is_private": true,
+            "auto_restart": false
         }
     },
     "certificates": [
