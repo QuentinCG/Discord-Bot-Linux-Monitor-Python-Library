@@ -118,6 +118,18 @@ def main() -> None:
     async def kill_process(interaction: discord.Interaction, pid: int) -> None: # type: ignore
         await discord_bot_linux_monitor.kill_process(interaction, pid)
 
+    @discord_bot.tree.command(name="list_commands", description="📋 List all available commands 📋")
+    async def list_commands(interaction: discord.Interaction) -> None: # type: ignore
+        await discord_bot_linux_monitor.list_commands(interaction)
+
+    @discord_bot.tree.command(name="execute_command", description="🚀 Execute a command 🚀")
+    async def execute_command(interaction: discord.Interaction, command_name: str) -> None: # type: ignore
+        await discord_bot_linux_monitor.execute_command(interaction, command_name=command_name)
+
+    @discord_bot.tree.command(name="execute_all_commands", description="🚀 Execute all commands 🚀")
+    async def execute_all_commands(interaction: discord.Interaction) -> None: # type: ignore
+        await discord_bot_linux_monitor.execute_all_commands(interaction)
+
     #endregion
 
     # Start the discord bot

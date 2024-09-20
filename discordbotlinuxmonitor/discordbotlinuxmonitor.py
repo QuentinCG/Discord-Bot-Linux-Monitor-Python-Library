@@ -782,4 +782,68 @@ class DiscordBotLinuxMonitor:
             logging.exception(msg=out_msg)
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
 
+    async def list_commands(self, interaction: discord.Interaction) -> None:
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+
+        # Indiquer que la commande est en cours de traitement
+        await interaction.response.defer()
+
+        try:
+            is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
+            # Récupérer la liste des commandes disponibles
+            out_msg: str = await self.monitoring.list_commands(is_private=is_private)
+
+            # Répondre à l'utilisateur
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+        except Exception as e:
+            out_msg = f"**Internal error retrieving available commands**:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+
+
+    async def execute_command(self, interaction: discord.Interaction, command_name: str) -> None:
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+
+        # Indiquer que la commande est en cours de traitement
+        await interaction.response.defer()
+
+        try:
+            is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
+            # Exécuter la commande demandée
+            out_msg: str = await self.monitoring.execute_command(is_private=is_private, command_name=command_name)
+
+            # Répondre à l'utilisateur
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+        except Exception as e:
+            out_msg = f"**Internal error executing command '{command_name}'**:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+
+    async def execute_all_commands(self, interaction: discord.Interaction) -> None:
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+
+        # Indiquer que la commande est en cours de traitement
+        await interaction.response.defer()
+
+        try:
+            is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
+            # Exécuter toutes les commandes
+            out_msg: str = await self.monitoring.execute_all_commands(is_private=is_private)
+
+            # Répondre à l'utilisateur
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+        except Exception as e:
+            out_msg = f"**Internal error executing all commands**:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+
     #endregion

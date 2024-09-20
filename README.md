@@ -54,6 +54,11 @@ Displayed infos are not the same if you do the command in private or public chan
  - `/ports`: 🔒 Check ports 🔒
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/ports.jpg" height="200">
 
+ - `/list_commands`: 📋 List all available commands 📋
+
+ - `/execute_command`: 🚀 Execute a command 🚀
+
+ - `/execute_all_commands`: 🚀 Execute all commands 🚀
 
 ### Private discord channel commands:
  - `/force_sync`: 🔄 Force discord command synchronization 🔄

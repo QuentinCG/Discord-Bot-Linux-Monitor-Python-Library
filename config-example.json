@@ -251,5 +251,59 @@
             "timeout_in_sec": 10,
             "is_private": true
         }
-    ]
+    ],
+    "commands":
+    {
+        "banned_ips": {
+            "display_name": "IP bannies",
+            "command": "sudo fail2ban-client banned",
+            "is_private": true,
+            "show_content_if_success": true,
+            "show_content_if_issue": true,
+            "is_content_json": true,
+            "execute_in_scheduled_tasks_for_issues": false,
+            "execute_in_scheduled_tasks_for_infos": true,
+            "timeout_in_sec": 60
+        },
+        "update": {
+            "display_name": "Màj serveur 1/3 (Package update)",
+            "command": "sudo /usr/bin/apt-get update -q >/dev/null && { output=$(/usr/bin/apt list --upgradable 2>/dev/null | /usr/bin/grep -E 'upgradable from'); if [ -z \"$output\" ]; then /usr/bin/echo \"Packages already updated\"; else /usr/bin/echo \"$output\"; fi; }",
+            "is_private": true,
+            "show_content_if_success": true,
+            "show_content_if_issue": true,
+            "execute_in_scheduled_tasks_for_issues": false,
+            "execute_in_scheduled_tasks_for_infos": true,
+            "timeout_in_sec": 1200
+        },
+        "upgrade": {
+            "display_name": "Màj serveur 2/3 (Package upgrade)",
+            "command": "sudo /usr/bin/apt-get -q -y upgrade >&1 | /usr/bin/grep -E '^[0-9]+ upgraded,(.*)$'",
+            "is_private": true,
+            "show_content_if_success": true,
+            "show_content_if_issue": true,
+            "execute_in_scheduled_tasks_for_issues": false,
+            "execute_in_scheduled_tasks_for_infos": true,
+            "timeout_in_sec": 1200
+        },
+        "dpkg": {
+            "display_name": "Màj serveur 3/3 (Configure debian packages)",
+            "command": "sudo /usr/bin/dpkg --configure -a",
+            "is_private": true,
+            "show_content_if_success": true,
+            "show_content_if_issue": true,
+            "execute_in_scheduled_tasks_for_issues": false,
+            "execute_in_scheduled_tasks_for_infos": true,
+            "timeout_in_sec": 1200
+        },
+        "certificates": {
+            "display_name": "Renouvellement certificats",
+            "command": "output=$(sudo /usr/bin/certbot renew --quiet --renew-hook '/usr/bin/echo \"\\nCertificat ${RENEWED_LINEAGE} mis à jour (ce qui met à jour les noms de domaines suivants: ${RENEWED_DOMAINS})\\n\" >&2'); if [[ -n \"$output\" ]]; then /usr/bin/echo \"Service FTP relancé car dépend des certificats\"; sudo /etc/init.d/proftpd restart >/dev/null 2>&1; else /usr/bin/echo \"All certificates are already up to date\"; fi",
+            "is_private": true,
+            "show_content_if_success": true,
+            "show_content_if_issue": true,
+            "execute_in_scheduled_tasks_for_issues": false,
+            "execute_in_scheduled_tasks_for_infos": true,
+            "timeout_in_sec": 1200
+        }
+    }
 }
