@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2024)"
 __python_version__ = "3.+"
-__version__ = "1.4.0 (2024/10/07)"
+__version__ = "1.4.1 (2024/10/07)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -736,7 +736,7 @@ class DiscordBotLinuxMonitor:
             logging.exception(msg=out_msg)
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
 
-    async def list_processes(self, interaction: discord.Interaction) -> None:
+    async def list_processes(self, interaction: discord.Interaction, order_by_ram: bool) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
             return
         if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
@@ -750,7 +750,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             # Récupérer la liste des processus actifs
-            out_msg: str = await self.monitoring.get_ordered_processes()
+            out_msg: str = await self.monitoring.get_ordered_processes(get_non_consuming_processes=False, order_by_ram=order_by_ram)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
