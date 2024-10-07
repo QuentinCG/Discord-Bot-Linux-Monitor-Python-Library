@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2024)"
 __python_version__ = "3.+"
-__version__ = "1.3.1 (2024/09/19)"
+__version__ = "1.4.0 (2024/10/07)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -750,7 +750,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             # Récupérer la liste des processus actifs
-            out_msg: str = self.monitoring.get_ordered_processes()
+            out_msg: str = await self.monitoring.get_ordered_processes()
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
