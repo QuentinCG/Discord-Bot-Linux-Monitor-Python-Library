@@ -114,8 +114,8 @@ def main() -> None:
     async def list_processes(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.list_processes(interaction, order_by_ram=True)
 
-    @discord_bot.tree.command(name="list_processes_ordered_by_cpu_usage", description="[Private] 📋 List active processes (ordered by CPU usage) 📋")
-    async def list_processes(interaction: discord.Interaction) -> None: # type: ignore
+    @discord_bot.tree.command(name="list_processes_by_cpu_usage", description="[Private] 📋 List active processes (ordered by CPU usage) 📋")
+    async def list_processes_by_cpu_usage(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.list_processes(interaction, order_by_ram=False)
 
     @discord_bot.tree.command(name="kill_process", description="[Private] 🚫 Stop a process by PID 🚫")
