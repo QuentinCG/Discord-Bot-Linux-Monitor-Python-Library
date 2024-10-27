@@ -45,7 +45,13 @@
         "critical_temperature_celsius": 80.0,
         "warning_temperature_celsius": 70.0,
         "critical_uptime_seconds": 600,
-        "warning_uptime_seconds": 3600
+        "warning_uptime_seconds": 3600,
+        "excluded_interfaces": [
+            "lo",
+            "docker0",
+            "^veth(.*)$",
+            "^br-(.*)$"
+        ]
     },
     "scheduled_tasks_check_for_issues": {
         "max_duration_seconds_showing_same_error": 36000,
@@ -208,7 +214,7 @@
     ],
     "recent_user_connections": {
         "allow_all": false,
-        "max_days": 30,
+        "max_days": 1,
         "allowed_ips": [
             "111.222.111.222",
             "123.123.123.123"

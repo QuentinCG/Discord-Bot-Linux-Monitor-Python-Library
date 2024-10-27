@@ -750,7 +750,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             # Récupérer la liste des processus actifs
-            out_msg: str = await self.monitoring.get_ordered_processes(get_non_consuming_processes=False, order_by_ram=order_by_ram)
+            out_msg: str = await self.monitoring.get_ordered_processes(get_non_consuming_processes=False, order_by_ram=order_by_ram, max_processes=20)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
