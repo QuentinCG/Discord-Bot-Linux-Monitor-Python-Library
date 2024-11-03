@@ -22,7 +22,7 @@ It is compatible with python 3+ and usable only on Linux.
 ### Public and private discord channel commands
 Displayed infos are not the same if you do the command in private or public channel (all info are displayed in private channel, some are hidden from public channels)
 
- - `/usage`: 📊 View disk space, CPU, RAM, ... 📊
+ - `/usage`: 📊 View disk space, Load average, CPU, RAM, ... 📊
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/usage.jpg" height="400">
 
  - `/os_infos`: 🖥 View basic system information 🖥

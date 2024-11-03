@@ -7,7 +7,7 @@ Non exhaustive list of features (available by using it in shell or in python scr
     - Do all checks bellow in a scheduled tasks and display the results only if there is an issue (only in console if using only the library)
     - Do all checks bellow in a scheduled tasks and display the results every time (only in console if using only the library)
 
-    - Check CPU, RAM, SWAP, Temperature
+    - Check Load Average, CPU, RAM, SWAP, Temperature
     - Check disk usage
     - Check folder usage
     - Check websites basic availability (ping)
@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2024)"
 __python_version__ = "3.+"
-__version__ = "1.5.0 (2024/10/27)"
+__version__ = "1.5.1 (2024/11/03)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -446,10 +446,10 @@ class DiscordBotLinuxMonitor:
 
             if is_private:
                 out_msg += "\n"
-                out_msg += self.monitoring.check_load_average(display_only_if_critical=False) + "\n"
-                out_msg += self.monitoring.check_cpu_usage(display_only_if_critical=False) + "\n"
-                out_msg += self.monitoring.check_ram_usage(display_only_if_critical=False) + "\n"
-                out_msg += self.monitoring.check_swap_usage(display_only_if_critical=False) + "\n"
+                out_msg += await self.monitoring.check_load_average(display_only_if_critical=False) + "\n"
+                out_msg += await self.monitoring.check_cpu_usage(display_only_if_critical=False) + "\n"
+                out_msg += await self.monitoring.check_ram_usage(display_only_if_critical=False) + "\n"
+                out_msg += await self.monitoring.check_swap_usage(display_only_if_critical=False) + "\n"
                 out_msg += self.monitoring.check_cpu_temperature(display_only_if_critical=False) + "\n"
                 out_msg += self.monitoring.get_network_info()
 
