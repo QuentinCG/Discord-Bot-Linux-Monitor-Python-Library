@@ -56,7 +56,7 @@ Displayed infos are not the same if you do the command in private or public chan
 
  - `/list_commands`: 📋 List all available commands 📋
 
- - `/execute_command`: 🚀 Execute a command 🚀
+ - `/execute_command {command_name} [parameters]`: 🚀 Execute a command (optional parameters, only for commands with `accept_parameters` or a `{arg1}`/`{args}` placeholder) 🚀
 
  - `/execute_all_commands`: 🚀 Execute all commands 🚀
 

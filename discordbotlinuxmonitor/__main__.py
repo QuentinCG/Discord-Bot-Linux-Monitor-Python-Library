@@ -126,9 +126,9 @@ def main() -> None:
     async def list_commands(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.list_commands(interaction)
 
-    @discord_bot.tree.command(name="execute_command", description="🚀 Execute a command 🚀")
-    async def execute_command(interaction: discord.Interaction, command_name: str) -> None: # type: ignore
-        await discord_bot_linux_monitor.execute_command(interaction, command_name=command_name)
+    @discord_bot.tree.command(name="execute_command", description="🚀 Execute a command (optional parameters) 🚀")
+    async def execute_command(interaction: discord.Interaction, command_name: str, parameters: str = "") -> None: # type: ignore
+        await discord_bot_linux_monitor.execute_command(interaction, command_name=command_name, parameters=parameters)
 
     @discord_bot.tree.command(name="execute_all_commands", description="🚀 Execute all commands 🚀")
     async def execute_all_commands(interaction: discord.Interaction) -> None: # type: ignore

@@ -31,9 +31,9 @@ Non exhaustive list of features (available by using it in shell or in python scr
 __author__ = 'Quentin Comte-Gaz'
 __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
-__copyright__ = "Copyright Quentin Comte-Gaz (2024)"
+__copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.5.1 (2024/11/03)"
+__version__ = "1.6.0 (2026/08/19)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -805,7 +805,7 @@ class DiscordBotLinuxMonitor:
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
 
 
-    async def execute_command(self, interaction: discord.Interaction, command_name: str) -> None:
+    async def execute_command(self, interaction: discord.Interaction, command_name: str, parameters: str = "") -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
             return
         if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
@@ -817,7 +817,7 @@ class DiscordBotLinuxMonitor:
         try:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
             # Exécuter la commande demandée
-            out_msg: str = await self.monitoring.execute_command(is_private=is_private, command_name=command_name)
+            out_msg: str = await self.monitoring.execute_command(is_private=is_private, command_name=command_name, parameters=parameters)
 
             # Répondre à l'utilisateur
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
