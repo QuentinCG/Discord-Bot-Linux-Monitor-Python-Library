@@ -116,6 +116,9 @@ DISCORD_BOT_FOLDER="/opt/DiscordBot/"
 echo "$DISCORD_BOT_SERVICE_USER ALL=(ALL) NOPASSWD: /sbin/reboot" >> /etc/sudoers.d/$DISCORD_BOT_SERVICE_USER
 # Only if this library should be able to kill a process on demand:
 echo "$DISCORD_BOT_SERVICE_USER ALL=(ALL) NOPASSWD: /bin/kill" >> /etc/sudoers.d/$DISCORD_BOT_SERVICE_USER
+# To check last user connection
+echo "$DISCORD_BOT_SERVICE_USER ALL=(ALL) NOPASSWD: /usr/bin/last" >> /etc/sudoers.d/$DISCORD_BOT_SERVICE_USER
+
 # Add also all processes added in your config JSON file you want the library to be able to execute
 # Example for the existing config-example.json file:
 echo "$DISCORD_BOT_SERVICE_USER ALL=(ALL) NOPASSWD: /bin/systemctl" >> /etc/sudoers.d/$DISCORD_BOT_SERVICE_USER
