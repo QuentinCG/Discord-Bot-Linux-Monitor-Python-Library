@@ -83,6 +83,8 @@ Displayed infos are not the same if you do the command in private or public chan
 
  - `/clear_channel_messages {channel}`: 🧹 Remove all messages from a target channel (can clean any channel, command itself is private-only) 🧹
 
+ - `/list_clearable_channels`: 🧹 List text channels and whether the bot can clear them (View + Read History + Manage Messages), private-only 🧹
+
 ## How to install (for first launch)
 
   - Install package calling `python -m pip install discordbotlinuxmonitor` (or `python setup.py install` from the root of this repository)

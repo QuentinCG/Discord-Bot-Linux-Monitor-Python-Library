@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.6.5 (2026/08/24)"
+__version__ = "1.6.6 (2026/08/24)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -1117,6 +1117,55 @@ class DiscordBotLinuxMonitor:
                     await heartbeat_task
                 except asyncio.CancelledError:
                     pass
+
+    async def list_clearable_channels(self, interaction: discord.Interaction) -> None:
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+        if not self._is_private_channel(channel=interaction.channel): # type: ignore
+            await interaction.response.send_message(content="❌ Public channels do not allow this command.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        guild = interaction.guild
+        bot_member = guild.me if guild is not None else None # type: ignore
+        if guild is None or bot_member is None:
+            await interaction.followup.send(content="❌ Unable to resolve the guild or bot member.", ephemeral=True)
+            return
+
+        try:
+            clearable_lines: List[str] = []
+            blocked_lines: List[str] = []
+
+            for text_channel in guild.text_channels:
+                perms = text_channel.permissions_for(bot_member)
+                can_view: bool = perms.view_channel
+                can_read_history: bool = perms.read_message_history
+                can_manage: bool = perms.manage_messages
+                is_clearable: bool = can_view and can_read_history and can_manage
+
+                line = (
+                    f"{'✅' if is_clearable else '❌'} #{text_channel.name} "
+                    f"(View: {'✔' if can_view else '✘'}, "
+                    f"History: {'✔' if can_read_history else '✘'}, "
+                    f"Manage: {'✔' if can_manage else '✘'})"
+                )
+                if is_clearable:
+                    clearable_lines.append(line)
+                else:
+                    blocked_lines.append(line)
+
+            out_msg = f"🧹 **Clearable channels report** ({len(clearable_lines)} clearable / {len(guild.text_channels)} text channels)\n\n"
+            out_msg += "**✅ Clearable:**\n" + ("\n".join(clearable_lines) if clearable_lines else "None") + "\n\n"
+            out_msg += "**❌ Blocked (missing bot permission):**\n" + ("\n".join(blocked_lines) if blocked_lines else "None")
+
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+        except Exception as e:
+            out_msg = f"**Internal error listing clearable channels**:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
 
     async def list_commands(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):

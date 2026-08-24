@@ -130,6 +130,10 @@ def main() -> None:
     async def clear_channel_messages(interaction: discord.Interaction, channel: discord.TextChannel) -> None: # type: ignore
         await discord_bot_linux_monitor.clear_channel_messages(interaction, channel)
 
+    @discord_bot.tree.command(name="list_clearable_channels", description="[Private] 🧹 List text channels and bot clear permissions 🧹")
+    async def list_clearable_channels(interaction: discord.Interaction) -> None: # type: ignore
+        await discord_bot_linux_monitor.list_clearable_channels(interaction)
+
     @discord_bot.tree.command(name="list_commands", description="📋 List all available commands 📋")
     async def list_commands(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.list_commands(interaction)
