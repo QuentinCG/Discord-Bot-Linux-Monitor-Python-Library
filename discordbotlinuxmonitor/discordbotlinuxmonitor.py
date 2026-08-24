@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.6.1 (2026/08/22)"
+__version__ = "1.6.2 (2026/08/24)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -43,7 +43,8 @@ import discord
 from discord.app_commands.models import AppCommand
 from discord.ext import commands
 import json
-from typing import List, Union, Awaitable, Callable
+from typing import List, Union, Awaitable, Callable, Any, Dict, Optional
+from datetime import datetime, timedelta, timezone
 
 import asyncio
 
@@ -284,6 +285,66 @@ class DiscordBotLinuxMonitor:
             out_msg = f"**Internal error during command synchronization**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
             return out_msg
+
+    def _get_rate_limit_wait_seconds(self, error: discord.HTTPException, fallback_seconds: float = 1.5) -> float:
+        retry_after = getattr(error, "retry_after", None)
+        if isinstance(retry_after, (int, float)) and retry_after > 0:
+            return float(retry_after)
+
+        response = getattr(error, "response", None)
+        if response is not None:
+            headers = getattr(response, "headers", None)
+            if headers is not None:
+                header_retry_after = headers.get("Retry-After")
+                if header_retry_after is not None:
+                    try:
+                        parsed_retry_after = float(header_retry_after)
+                        if parsed_retry_after > 0:
+                            return parsed_retry_after
+                    except (ValueError, TypeError):
+                        pass
+
+        return fallback_seconds
+
+    async def _delete_message_with_rate_limit_retry(self, message: discord.Message, reason: str, max_retries: int = 10, on_rate_limit: Optional[Callable[[], None]] = None) -> None:
+        for attempt in range(max_retries + 1):
+            try:
+                await message.delete(reason=reason)
+                return
+            except discord.NotFound:
+                return
+            except discord.HTTPException as e:
+                if e.status == 429 and attempt < max_retries:
+                    if on_rate_limit is not None:
+                        on_rate_limit()
+                    wait_seconds = self._get_rate_limit_wait_seconds(error=e)
+                    logging.warning(msg=f"Rate limited while deleting message {message.id}, waiting {wait_seconds:.2f}s before retry...")
+                    await asyncio.sleep(wait_seconds)
+                    continue
+                raise
+
+    async def _bulk_delete_messages_with_rate_limit_retry(self, channel: discord.TextChannel, messages: List[discord.Message], reason: str, max_retries: int = 10, on_rate_limit: Optional[Callable[[], None]] = None) -> None:
+        if len(messages) == 0:
+            return
+
+        for attempt in range(max_retries + 1):
+            try:
+                if len(messages) == 1:
+                    await messages[0].delete(reason=reason)
+                else:
+                    await channel.delete_messages(messages, reason=reason)
+                return
+            except discord.NotFound:
+                return
+            except discord.HTTPException as e:
+                if e.status == 429 and attempt < max_retries:
+                    if on_rate_limit is not None:
+                        on_rate_limit()
+                    wait_seconds = self._get_rate_limit_wait_seconds(error=e)
+                    logging.warning(msg=f"Rate limited while bulk deleting {len(messages)} messages in '{channel.name}', waiting {wait_seconds:.2f}s before retry...")
+                    await asyncio.sleep(wait_seconds)
+                    continue
+                raise
 
     #endregion
 
@@ -782,6 +843,124 @@ class DiscordBotLinuxMonitor:
             out_msg = f"**Internal error stopping process of PID {pid}**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
             await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+
+    async def clear_channel_messages(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+        if not self._is_private_channel(channel=interaction.channel): # type: ignore
+            await interaction.response.send_message(content="❌ Public channels do not allow this command.", ephemeral=True)
+            return
+
+        # Make sure only authorized users can trigger a destructive command.
+        permissions = channel.permissions_for(interaction.user) # type: ignore
+        if not permissions.manage_messages:
+            await interaction.response.send_message(content=f"❌ You need 'Manage Messages' permission on channel '{channel.name}' to clear it.", ephemeral=True)
+            return
+
+        bot_member = interaction.guild.me if interaction.guild is not None else None # type: ignore
+        if bot_member is None:
+            await interaction.response.send_message(content="❌ Unable to resolve bot permissions.", ephemeral=True)
+            return
+
+        bot_permissions = channel.permissions_for(bot_member)
+        if not bot_permissions.manage_messages or not bot_permissions.read_message_history:
+            await interaction.response.send_message(content=f"❌ Bot is missing required permissions on channel '{channel.name}' (Manage Messages and Read Message History).", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        deleted_count: int = 0
+        rate_limit_retries: int = 0
+        delete_reason: str = f"Requested by {interaction.user} from private channel"
+        two_weeks_ago = datetime.now(timezone.utc) - timedelta(days=14)
+        progress_every_seconds: float = 2.5
+        progress_every_deleted_messages: int = 200
+        started_monotonic: float = asyncio.get_running_loop().time()
+        last_progress_monotonic: float = started_monotonic
+        last_reported_deleted_count: int = 0
+
+        def _on_rate_limit_hit() -> None:
+            nonlocal rate_limit_retries
+            rate_limit_retries += 1
+
+        async def _update_progress(force: bool = False) -> None:
+            nonlocal last_progress_monotonic
+            nonlocal last_reported_deleted_count
+
+            now = asyncio.get_running_loop().time()
+            should_update = force
+            if not should_update:
+                enough_time_elapsed = (now - last_progress_monotonic) >= progress_every_seconds
+                enough_messages_deleted = (deleted_count - last_reported_deleted_count) >= progress_every_deleted_messages
+                should_update = enough_time_elapsed or enough_messages_deleted
+
+            if not should_update:
+                return
+
+            elapsed_seconds = int(now - started_monotonic)
+            progress_msg = (
+                f"🧹 Cleaning channel '{channel.name}'...\n"
+                f"Deleted messages: {deleted_count}\n"
+                f"Rate-limit waits: {rate_limit_retries}\n"
+                f"Elapsed: {elapsed_seconds}s"
+            )
+
+            try:
+                await interaction.edit_original_response(content=progress_msg)
+                last_progress_monotonic = now
+                last_reported_deleted_count = deleted_count
+            except discord.HTTPException as e:
+                if e.status == 429:
+                    _on_rate_limit_hit()
+                    wait_seconds = self._get_rate_limit_wait_seconds(error=e)
+                    await asyncio.sleep(wait_seconds)
+                else:
+                    logging.warning(msg=f"Failed to update cleanup progress message: {e}")
+
+        try:
+            await _update_progress(force=True)
+            recent_batch: List[discord.Message] = []
+
+            async for message in channel.history(limit=None, oldest_first=False):
+                if message.created_at >= two_weeks_ago:
+                    recent_batch.append(message)
+
+                    # Bulk delete by chunks of 100 to reduce API calls and rate-limit pressure.
+                    if len(recent_batch) == 100:
+                        await self._bulk_delete_messages_with_rate_limit_retry(channel=channel, messages=recent_batch, reason=delete_reason, on_rate_limit=_on_rate_limit_hit)
+                        deleted_count += len(recent_batch)
+                        recent_batch = []
+                        await _update_progress()
+                else:
+                    await self._delete_message_with_rate_limit_retry(message=message, reason=delete_reason, on_rate_limit=_on_rate_limit_hit)
+                    deleted_count += 1
+                    await _update_progress()
+
+            if len(recent_batch) > 0:
+                await self._bulk_delete_messages_with_rate_limit_retry(channel=channel, messages=recent_batch, reason=delete_reason, on_rate_limit=_on_rate_limit_hit)
+                deleted_count += len(recent_batch)
+                await _update_progress()
+
+            elapsed_seconds = int(asyncio.get_running_loop().time() - started_monotonic)
+            out_msg = (
+                f"✅ Cleared channel '{channel.name}'.\n"
+                f"Deleted messages: {deleted_count}\n"
+                f"Rate-limit waits: {rate_limit_retries}\n"
+                f"Elapsed: {elapsed_seconds}s"
+            )
+            await interaction.edit_original_response(content=out_msg)
+        except discord.HTTPException as e:
+            if e.status == 429:
+                _on_rate_limit_hit()
+            out_msg = f"**Discord API error while clearing messages in channel '{channel.name}'** (status {e.status}, retries: {rate_limit_retries}):\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await interaction.edit_original_response(content=out_msg)
+        except Exception as e:
+            out_msg = f"**Internal error while clearing messages in channel '{channel.name}'**:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await interaction.edit_original_response(content=out_msg)
 
     async def list_commands(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):

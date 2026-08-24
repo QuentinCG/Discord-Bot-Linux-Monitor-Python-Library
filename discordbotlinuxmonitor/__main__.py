@@ -122,6 +122,10 @@ def main() -> None:
     async def kill_process(interaction: discord.Interaction, pid: int) -> None: # type: ignore
         await discord_bot_linux_monitor.kill_process(interaction, pid)
 
+    @discord_bot.tree.command(name="clear_channel_messages", description="[Private] 🧹 Remove all messages from a channel 🧹")
+    async def clear_channel_messages(interaction: discord.Interaction, channel: discord.TextChannel) -> None: # type: ignore
+        await discord_bot_linux_monitor.clear_channel_messages(interaction, channel)
+
     @discord_bot.tree.command(name="list_commands", description="📋 List all available commands 📋")
     async def list_commands(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.list_commands(interaction)

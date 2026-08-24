@@ -79,6 +79,8 @@ Displayed infos are not the same if you do the command in private or public chan
  - `/kill_process`: 🚫 Stop a process by PID 🚫
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/kill_process.jpg" height="200">
 
+ - `/clear_channel_messages {channel}`: 🧹 Remove all messages from a target channel (can clean any channel, command itself is private-only) 🧹
+
 ## How to install (for first launch)
 
   - Install package calling `python -m pip install discordbotlinuxmonitor` (or `python setup.py install` from the root of this repository)
