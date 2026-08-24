@@ -312,7 +312,11 @@ class DiscordBotLinuxMonitor:
     async def _delete_message_with_rate_limit_retry(self, message: discord.Message, reason: str, max_retries: int = 10, on_rate_limit: Optional[Callable[[], None]] = None) -> None:
         for attempt in range(max_retries + 1):
             try:
-                await message.delete(reason=reason)
+                try:
+                    await message.delete(reason=reason)
+                except TypeError:
+                    # Some discord.py objects (e.g. PartialMessage) do not accept `reason`.
+                    await message.delete()
                 return
             except discord.NotFound:
                 return
@@ -333,7 +337,11 @@ class DiscordBotLinuxMonitor:
         for attempt in range(max_retries + 1):
             try:
                 if len(messages) == 1:
-                    await messages[0].delete(reason=reason)
+                    try:
+                        await messages[0].delete(reason=reason)
+                    except TypeError:
+                        # Some discord.py objects (e.g. PartialMessage) do not accept `reason`.
+                        await messages[0].delete()
                 else:
                     await channel.delete_messages(messages, reason=reason)
                 return
