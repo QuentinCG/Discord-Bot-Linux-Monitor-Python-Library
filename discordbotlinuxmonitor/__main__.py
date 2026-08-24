@@ -54,6 +54,10 @@ def main() -> None:
     async def force_sync(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.force_sync(interaction)
 
+    @discord_bot.tree.command(name="version", description="🤖 Show bot version 🤖")
+    async def version(interaction: discord.Interaction) -> None: # type: ignore
+        await discord_bot_linux_monitor.version(interaction)
+
     @discord_bot.tree.command(name="usage", description="📊 View disk space, CPU, RAM, ... 📊")
     async def usage(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.usage(interaction)

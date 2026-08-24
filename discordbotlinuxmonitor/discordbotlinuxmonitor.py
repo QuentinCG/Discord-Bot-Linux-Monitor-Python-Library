@@ -286,6 +286,9 @@ class DiscordBotLinuxMonitor:
             logging.exception(msg=out_msg)
             return out_msg
 
+    def _welcome_message_with_version(self, welcome_message: str) -> str:
+        return f"{welcome_message}\n\n🤖 Bot version: {__version__}"
+
     def _get_rate_limit_wait_seconds(self, error: discord.HTTPException, fallback_seconds: float = 1.5) -> float:
         retry_after = getattr(error, "retry_after", None)
         if isinstance(retry_after, (int, float)) and retry_after > 0:
@@ -370,20 +373,20 @@ class DiscordBotLinuxMonitor:
                         logging.info(msg="Found the public channel, it will be possible to do public commands.")
                         public_channel_cmd_ready = True
                         if self.welcome_message_for_public_commands != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self.welcome_message_for_public_commands)
+                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_public_commands))
 
                     if self.channel_name_for_private_commands != "" and channel.name == self.channel_name_for_private_commands:
                         logging.info(msg="Found the private channel, it will be possible to do private commands.")
                         private_channel_cmd_ready = True
                         if self.welcome_message_for_private_commands != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self.welcome_message_for_private_commands)
+                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_private_commands))
 
                     if self.channel_name_for_public_error_tasks != "" and channel.name == self.channel_name_for_public_error_tasks:
                         logging.info(msg="Found the public channel for error task, it will be possible to show public status issues if found periodically.")
                         public_channel_error_task_ready = True
 
                         if self.welcome_message_for_public_error_tasks != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self.welcome_message_for_public_error_tasks)
+                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_public_error_tasks))
 
                         logging.info(msg=f"Activating automatic public follow and public service restart if down with '{self.bot.user}' and guild '{guild.name}' (id: '{guild.id}') on channel '{channel.name}' (id '{channel.id}').")
                         public_channel_for_error_task: discord.TextChannel = channel
@@ -397,7 +400,7 @@ class DiscordBotLinuxMonitor:
                         public_channel_info_task_ready = True
 
                         if self.welcome_message_for_public_infos_tasks != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self.welcome_message_for_public_infos_tasks)
+                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_public_infos_tasks))
 
                         logging.info(msg=f"Activating automatic public follow info with '{self.bot.user}' and guild '{guild.name}' (id: '{guild.id}') on channel '{channel.name}' (id '{channel.id}').")
                         public_channel_for_info_task: discord.TextChannel = channel
@@ -411,7 +414,7 @@ class DiscordBotLinuxMonitor:
                         private_channel_error_task_ready = True
 
                         if self.welcome_message_for_private_error_tasks != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self.welcome_message_for_private_error_tasks)
+                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_private_error_tasks))
 
                         logging.info(msg=f"Activating automatic private follow and public service restart if down with '{self.bot.user}' and guild '{guild.name}' (id: '{guild.id}') on channel '{channel.name}' (id '{channel.id}').")
                         private_channel_for_error_task: discord.TextChannel = channel
@@ -425,7 +428,7 @@ class DiscordBotLinuxMonitor:
                         private_channel_info_task_ready = True
 
                         if self.welcome_message_for_private_infos_tasks != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self.welcome_message_for_private_infos_tasks)
+                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_private_infos_tasks))
 
                         logging.info(msg=f"Activating automatic private follow info with '{self.bot.user}' and guild '{guild.name}' (id: '{guild.id}') on channel '{channel.name}' (id '{channel.id}').")
                         private_channel_for_info_task: discord.TextChannel = channel
@@ -485,6 +488,18 @@ class DiscordBotLinuxMonitor:
 
         # Respond to the user
         await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+
+    async def version(self, interaction: discord.Interaction) -> None:
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+
+        out_msg: str = (
+            f"🤖 Bot version: {__version__}\n"
+            f"🐍 Python compatibility: {__python_version__}"
+        )
+        await interaction.response.send_message(content=out_msg, ephemeral=True)
 
     async def usage(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
