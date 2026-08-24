@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.6.4 (2026/08/24)"
+__version__ = "1.6.5 (2026/08/24)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -327,6 +327,68 @@ class DiscordBotLinuxMonitor:
             parts.append(f"{secs}s")
 
         return " ".join(parts)
+
+    def _get_message_preview(self, message: discord.Message, max_length: int = 80) -> str:
+        content: str = str(getattr(message, "content", "") or "").strip()
+
+        if content == "":
+            attachments = getattr(message, "attachments", [])
+            embeds = getattr(message, "embeds", [])
+            if len(attachments) > 0:
+                content = f"[{len(attachments)} attachment(s)]"
+            elif len(embeds) > 0:
+                content = f"[{len(embeds)} embed(s)]"
+            else:
+                content = "[no text]"
+
+        content = content.replace("\n", " ").replace("\r", " ")
+        created_at = getattr(message, "created_at", None)
+        if created_at is not None:
+            try:
+                timestamp = created_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            except Exception:
+                timestamp = str(created_at)
+        else:
+            timestamp = "unknown-time"
+
+        if len(content) > max_length:
+            content = content[:max_length - 3] + "..."
+
+        return f"[{timestamp}] {content}"
+
+    def _build_cleanup_embed(self, channel_name: str, state: str, deleted_count: int, rate_limit_retries: int, elapsed_seconds: float, last_deleted_preview: str, spinner_frame: str = "", scanned_count: Optional[int] = None, error_text: str = "") -> "discord.Embed":
+        # state is one of: "running", "done", "error".
+        if state == "done":
+            color = discord.Color.green()
+            title = "🧹 Channel Cleanup — Completed"
+            status_value = "✅ Completed"
+        elif state == "error":
+            color = discord.Color.red()
+            title = "🧹 Channel Cleanup — Failed"
+            status_value = "❌ Failed"
+        else:
+            color = discord.Color.blurple()
+            title = "🧹 Channel Cleanup — In progress"
+            status_value = f"{spinner_frame} Working…".strip()
+
+        embed = discord.Embed(title=title, color=color)
+        embed.description = f"Target channel: **#{channel_name}**"
+
+        embed.add_field(name="Status", value=status_value, inline=True)
+        embed.add_field(name="🗑️ Deleted", value=f"**{deleted_count}** message(s)", inline=True)
+        embed.add_field(name="⏳ Elapsed", value=self._format_duration(elapsed_seconds), inline=True)
+
+        if scanned_count is not None:
+            embed.add_field(name="🔎 Scanned", value=f"{scanned_count} message(s)", inline=True)
+        embed.add_field(name="🚦 Rate-limit waits", value=str(rate_limit_retries), inline=True)
+
+        if error_text != "":
+            embed.add_field(name="⚠️ Error", value=f"```sh\n{error_text[:1000]}\n```", inline=False)
+
+        embed.add_field(name="🕗 Last deleted message", value=(last_deleted_preview if last_deleted_preview != "" else "N/A")[:1024], inline=False)
+
+        embed.set_footer(text=f"Bot v{__version__} • Last update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        return embed
 
     async def _delete_message_with_rate_limit_retry(self, message: discord.Message, reason: str, max_retries: int = 10, on_rate_limit: Optional[Callable[[], None]] = None) -> None:
         for attempt in range(max_retries + 1):
@@ -922,10 +984,12 @@ class DiscordBotLinuxMonitor:
         started_monotonic: float = asyncio.get_running_loop().time()
         last_progress_monotonic: float = started_monotonic
         last_reported_deleted_count: int = 0
-        heartbeat_frames: List[str] = ["|", "/", "-", "\\"]
+        heartbeat_frames: List[str] = ["◐", "◓", "◑", "◒"]
         heartbeat_index: int = 0
         heartbeat_stop_event = asyncio.Event()
         heartbeat_task: Optional[asyncio.Task] = None
+        last_deleted_message_preview: str = "N/A"
+        scanned_count: int = 0
 
         def _on_rate_limit_hit() -> None:
             nonlocal rate_limit_retries
@@ -946,21 +1010,21 @@ class DiscordBotLinuxMonitor:
             if not should_update:
                 return
 
-            elapsed_duration = self._format_duration(now - started_monotonic)
-            last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             heartbeat_frame = heartbeat_frames[heartbeat_index % len(heartbeat_frames)]
             heartbeat_index += 1
-            progress_msg = (
-                f"🧹 Cleaning channel '{channel.name}'...\n"
-                f" - Status: {heartbeat_frame} Working...\n"
-                f" - Deleted messages: {deleted_count}\n"
-                f" - Rate-limit waits: {rate_limit_retries}\n"
-                f" - Elapsed: {elapsed_duration}\n"
-                f" - Last update: {last_update}"
+            embed = self._build_cleanup_embed(
+                channel_name=channel.name,
+                state="running",
+                deleted_count=deleted_count,
+                rate_limit_retries=rate_limit_retries,
+                elapsed_seconds=now - started_monotonic,
+                last_deleted_preview=last_deleted_message_preview,
+                spinner_frame=heartbeat_frame,
+                scanned_count=scanned_count,
             )
 
             try:
-                await interaction.edit_original_response(content=progress_msg)
+                await interaction.edit_original_response(content=None, embed=embed)
                 last_progress_monotonic = now
                 last_reported_deleted_count = deleted_count
             except discord.HTTPException as e:
@@ -984,46 +1048,67 @@ class DiscordBotLinuxMonitor:
             recent_batch: List[discord.Message] = []
 
             async for message in channel.history(limit=None, oldest_first=False):
+                scanned_count += 1
                 if message.created_at >= two_weeks_ago:
                     recent_batch.append(message)
 
                     # Bulk delete by chunks of 100 to reduce API calls and rate-limit pressure.
                     if len(recent_batch) == 100:
+                        last_deleted_message_preview = self._get_message_preview(recent_batch[-1])
                         await self._bulk_delete_messages_with_rate_limit_retry(channel=channel, messages=recent_batch, reason=delete_reason, on_rate_limit=_on_rate_limit_hit)
                         deleted_count += len(recent_batch)
                         recent_batch = []
                         await _update_progress()
                 else:
+                    last_deleted_message_preview = self._get_message_preview(message)
                     await self._delete_message_with_rate_limit_retry(message=message, reason=delete_reason, on_rate_limit=_on_rate_limit_hit)
                     deleted_count += 1
                     await _update_progress()
 
             if len(recent_batch) > 0:
+                last_deleted_message_preview = self._get_message_preview(recent_batch[-1])
                 await self._bulk_delete_messages_with_rate_limit_retry(channel=channel, messages=recent_batch, reason=delete_reason, on_rate_limit=_on_rate_limit_hit)
                 deleted_count += len(recent_batch)
                 await _update_progress()
 
-            elapsed_duration = self._format_duration(asyncio.get_running_loop().time() - started_monotonic)
-            last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            out_msg = (
-                f"✅ Cleared channel '{channel.name}'.\n"
-                f" - Status: Completed\n"
-                f" - Deleted messages: {deleted_count}\n"
-                f" - Rate-limit waits: {rate_limit_retries}\n"
-                f" - Elapsed: {elapsed_duration}\n"
-                f" - Last update: {last_update}"
+            embed = self._build_cleanup_embed(
+                channel_name=channel.name,
+                state="done",
+                deleted_count=deleted_count,
+                rate_limit_retries=rate_limit_retries,
+                elapsed_seconds=asyncio.get_running_loop().time() - started_monotonic,
+                last_deleted_preview=last_deleted_message_preview,
+                scanned_count=scanned_count,
             )
-            await interaction.edit_original_response(content=out_msg)
+            await interaction.edit_original_response(content=None, embed=embed)
         except discord.HTTPException as e:
             if e.status == 429:
                 _on_rate_limit_hit()
-            out_msg = f"**Discord API error while clearing messages in channel '{channel.name}'** (status {e.status}, retries: {rate_limit_retries}):\n```sh\n{e}\n```"
-            logging.exception(msg=out_msg)
-            await interaction.edit_original_response(content=out_msg)
+            embed = self._build_cleanup_embed(
+                channel_name=channel.name,
+                state="error",
+                deleted_count=deleted_count,
+                rate_limit_retries=rate_limit_retries,
+                elapsed_seconds=asyncio.get_running_loop().time() - started_monotonic,
+                last_deleted_preview=last_deleted_message_preview,
+                scanned_count=scanned_count,
+                error_text=f"Discord API error (status {e.status}): {e}",
+            )
+            logging.exception(msg=f"Discord API error while clearing messages in channel '{channel.name}': {e}")
+            await interaction.edit_original_response(content=None, embed=embed)
         except Exception as e:
-            out_msg = f"**Internal error while clearing messages in channel '{channel.name}'**:\n```sh\n{e}\n```"
-            logging.exception(msg=out_msg)
-            await interaction.edit_original_response(content=out_msg)
+            embed = self._build_cleanup_embed(
+                channel_name=channel.name,
+                state="error",
+                deleted_count=deleted_count,
+                rate_limit_retries=rate_limit_retries,
+                elapsed_seconds=asyncio.get_running_loop().time() - started_monotonic,
+                last_deleted_preview=last_deleted_message_preview,
+                scanned_count=scanned_count,
+                error_text=str(e),
+            )
+            logging.exception(msg=f"Internal error while clearing messages in channel '{channel.name}': {e}")
+            await interaction.edit_original_response(content=None, embed=embed)
         finally:
             heartbeat_stop_event.set()
             if heartbeat_task is not None and not heartbeat_task.done():
