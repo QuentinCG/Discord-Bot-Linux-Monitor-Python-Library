@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.6.3 (2026/08/24)"
+__version__ = "1.6.4 (2026/08/24)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -308,6 +308,25 @@ class DiscordBotLinuxMonitor:
                         pass
 
         return fallback_seconds
+
+    def _format_duration(self, total_seconds: float) -> str:
+        seconds: int = max(0, int(total_seconds))
+
+        days, remainder = divmod(seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, secs = divmod(remainder, 60)
+
+        parts: List[str] = []
+        if days > 0:
+            parts.append(f"{days}d")
+        if hours > 0:
+            parts.append(f"{hours}h")
+        if minutes > 0:
+            parts.append(f"{minutes}m")
+        if secs > 0 or len(parts) == 0:
+            parts.append(f"{secs}s")
+
+        return " ".join(parts)
 
     async def _delete_message_with_rate_limit_retry(self, message: discord.Message, reason: str, max_retries: int = 10, on_rate_limit: Optional[Callable[[], None]] = None) -> None:
         for attempt in range(max_retries + 1):
@@ -903,6 +922,10 @@ class DiscordBotLinuxMonitor:
         started_monotonic: float = asyncio.get_running_loop().time()
         last_progress_monotonic: float = started_monotonic
         last_reported_deleted_count: int = 0
+        heartbeat_frames: List[str] = ["|", "/", "-", "\\"]
+        heartbeat_index: int = 0
+        heartbeat_stop_event = asyncio.Event()
+        heartbeat_task: Optional[asyncio.Task] = None
 
         def _on_rate_limit_hit() -> None:
             nonlocal rate_limit_retries
@@ -911,6 +934,7 @@ class DiscordBotLinuxMonitor:
         async def _update_progress(force: bool = False) -> None:
             nonlocal last_progress_monotonic
             nonlocal last_reported_deleted_count
+            nonlocal heartbeat_index
 
             now = asyncio.get_running_loop().time()
             should_update = force
@@ -922,12 +946,17 @@ class DiscordBotLinuxMonitor:
             if not should_update:
                 return
 
-            elapsed_seconds = int(now - started_monotonic)
+            elapsed_duration = self._format_duration(now - started_monotonic)
+            last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            heartbeat_frame = heartbeat_frames[heartbeat_index % len(heartbeat_frames)]
+            heartbeat_index += 1
             progress_msg = (
                 f"🧹 Cleaning channel '{channel.name}'...\n"
-                f"Deleted messages: {deleted_count}\n"
-                f"Rate-limit waits: {rate_limit_retries}\n"
-                f"Elapsed: {elapsed_seconds}s"
+                f" - Status: {heartbeat_frame} Working...\n"
+                f" - Deleted messages: {deleted_count}\n"
+                f" - Rate-limit waits: {rate_limit_retries}\n"
+                f" - Elapsed: {elapsed_duration}\n"
+                f" - Last update: {last_update}"
             )
 
             try:
@@ -942,8 +971,16 @@ class DiscordBotLinuxMonitor:
                 else:
                     logging.warning(msg=f"Failed to update cleanup progress message: {e}")
 
+        async def _heartbeat_loop() -> None:
+            while not heartbeat_stop_event.is_set():
+                await asyncio.sleep(5)
+                if heartbeat_stop_event.is_set():
+                    return
+                await _update_progress(force=True)
+
         try:
             await _update_progress(force=True)
+            heartbeat_task = asyncio.create_task(_heartbeat_loop())
             recent_batch: List[discord.Message] = []
 
             async for message in channel.history(limit=None, oldest_first=False):
@@ -966,12 +1003,15 @@ class DiscordBotLinuxMonitor:
                 deleted_count += len(recent_batch)
                 await _update_progress()
 
-            elapsed_seconds = int(asyncio.get_running_loop().time() - started_monotonic)
+            elapsed_duration = self._format_duration(asyncio.get_running_loop().time() - started_monotonic)
+            last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             out_msg = (
                 f"✅ Cleared channel '{channel.name}'.\n"
-                f"Deleted messages: {deleted_count}\n"
-                f"Rate-limit waits: {rate_limit_retries}\n"
-                f"Elapsed: {elapsed_seconds}s"
+                f" - Status: Completed\n"
+                f" - Deleted messages: {deleted_count}\n"
+                f" - Rate-limit waits: {rate_limit_retries}\n"
+                f" - Elapsed: {elapsed_duration}\n"
+                f" - Last update: {last_update}"
             )
             await interaction.edit_original_response(content=out_msg)
         except discord.HTTPException as e:
@@ -984,6 +1024,14 @@ class DiscordBotLinuxMonitor:
             out_msg = f"**Internal error while clearing messages in channel '{channel.name}'**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
             await interaction.edit_original_response(content=out_msg)
+        finally:
+            heartbeat_stop_event.set()
+            if heartbeat_task is not None and not heartbeat_task.done():
+                heartbeat_task.cancel()
+                try:
+                    await heartbeat_task
+                except asyncio.CancelledError:
+                    pass
 
     async def list_commands(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
