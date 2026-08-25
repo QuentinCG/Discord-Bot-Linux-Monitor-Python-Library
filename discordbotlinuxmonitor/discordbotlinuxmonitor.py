@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.6.6 (2026/08/24)"
+__version__ = "1.6.7 (2026/08/24)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -41,6 +41,7 @@ from linuxmonitor import LinuxMonitor
 
 import discord
 from discord.app_commands.models import AppCommand
+from discord import app_commands
 from discord.ext import commands
 import json
 from typing import List, Union, Awaitable, Callable, Any, Dict, Optional
@@ -71,7 +72,6 @@ class DiscordBotLinuxMonitor:
 
         # Initialize the bot
         self.force_sync_on_startup: bool = force_sync_on_startup
-        self.MAX_LENGTH_OF_DISCORD_MESSAGE = 2000 # Forced by Discord API
         intents: discord.Intents = discord.Intents.default()
         self.bot = commands.Bot(command_prefix=self.command_prefix, intents=intents)
 
@@ -208,68 +208,6 @@ class DiscordBotLinuxMonitor:
         res: bool = (self.channel_name_for_public_commands == channel.name) # type: ignore
         return res # type: ignore
 
-    async def _channel_send_no_limit(self, channel: discord.TextChannel, msg: str) -> None:
-        logging.info(msg=f"Sending message to channel '{channel.name}':\n{msg}")
-
-        while len(msg) > self.MAX_LENGTH_OF_DISCORD_MESSAGE:
-            # Find the last newline within the limit
-            split_point = msg.rfind('\n', 0, self.MAX_LENGTH_OF_DISCORD_MESSAGE)
-            if split_point == -1:  # No newline found, split at max_length
-                split_point = self.MAX_LENGTH_OF_DISCORD_MESSAGE
-
-            # Send the chunk and remove it from the message
-            await channel.send(content=msg[:split_point].rstrip())
-            msg = msg[split_point:].lstrip()
-
-        # Send the remaining message
-        if msg:
-            await channel.send(content=msg)
-
-    async def _interaction_followup_send_no_limit(self, interaction: discord.Interaction, msg: str) -> None:
-        logging.info(msg=f"Sending follow-up message:\n{msg}")
-
-        # Send the first chunk as a follow-up message
-        try:
-            if msg == "":
-                # Send generic interaction response if no message is returned
-                msg = "No answer."
-
-            if len(msg) > self.MAX_LENGTH_OF_DISCORD_MESSAGE:
-                # Find the last newline within the limit or just split at max_length
-                split_point = msg.rfind('\n', 0, self.MAX_LENGTH_OF_DISCORD_MESSAGE)
-                if split_point == -1:  # No newline found, split at max_length
-                    split_point = self.MAX_LENGTH_OF_DISCORD_MESSAGE
-
-                await interaction.followup.send(content=msg[:split_point].rstrip())
-                msg = msg[split_point:].lstrip()
-            else:
-                await interaction.followup.send(content=msg)
-                return  # Exit if the message fits within the limit
-
-        except Exception as e:
-            logging.error(msg=f"Error while sending follow-up message: {e}")
-            return
-
-        # Handle additional messages that exceed the initial follow-up limit
-        while len(msg) > self.MAX_LENGTH_OF_DISCORD_MESSAGE:
-            split_point = msg.rfind('\n', 0, self.MAX_LENGTH_OF_DISCORD_MESSAGE)
-            if split_point == -1:
-                split_point = self.MAX_LENGTH_OF_DISCORD_MESSAGE
-
-            try:
-                await interaction.channel.send(content=msg[:split_point].rstrip()) # type: ignore
-            except Exception as e:
-                logging.error(msg=f"Error while sending message to channel: {e}")
-
-            msg = msg[split_point:].lstrip()
-
-        # Send any remaining message directly to the channel
-        if msg:
-            try:
-                await interaction.channel.send(content=msg) # type: ignore
-            except Exception as e:
-                logging.error(msg=f"Error while sending message to channel: {e}")
-
     async def _force_sync(self) -> str:
         try:
             logging.info(msg="Forcing the sync of the bot's commands...")
@@ -390,6 +328,69 @@ class DiscordBotLinuxMonitor:
         embed.set_footer(text=f"Bot v{__version__} • Last update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         return embed
 
+    def _infer_embed_color(self, text: str, is_error: bool = False) -> "discord.Color":
+        # Color-code the embed depending on the status hints found in the text.
+        if is_error or "❌" in text or "🔴" in text:
+            return discord.Color.red()
+        if "⚠️" in text or "🟠" in text or "🟡" in text:
+            return discord.Color.orange()
+        return discord.Color.green()
+
+    def _build_result_embed(self, title: str, description: str, color: "discord.Color") -> "discord.Embed":
+        embed = discord.Embed(title=title[:256], color=color)
+        embed.description = (description if description.strip() != "" else "No answer.")[:4096]
+        embed.set_footer(text=f"Bot v{__version__} • {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        return embed
+
+    def _split_text_for_embed(self, text: str, max_length: int = 4000) -> List[str]:
+        chunks: List[str] = []
+        remaining: str = text
+        while len(remaining) > max_length:
+            split_point = remaining.rfind('\n', 0, max_length)
+            if split_point == -1:
+                split_point = max_length
+            chunks.append(remaining[:split_point].rstrip())
+            remaining = remaining[split_point:].lstrip()
+        if remaining:
+            chunks.append(remaining)
+        return chunks
+
+    async def _interaction_followup_send_embed(self, interaction: discord.Interaction, title: str, msg: str, icon: str = "", is_error: bool = False, ephemeral: bool = False) -> None:
+        if msg is None or msg.strip() == "":
+            msg = "No answer."
+
+        logging.info(msg=f"Sending embed follow-up '{title}':\n{msg}")
+
+        color: "discord.Color" = self._infer_embed_color(text=msg, is_error=is_error)
+        display_title: str = f"{icon} {title}".strip()
+        chunks: List[str] = self._split_text_for_embed(text=msg)
+
+        try:
+            for index, chunk in enumerate(chunks):
+                page_title: str = display_title if len(chunks) == 1 else f"{display_title} ({index + 1}/{len(chunks)})"
+                embed: "discord.Embed" = self._build_result_embed(title=page_title, description=chunk, color=color)
+                await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+        except Exception as e:
+            logging.error(msg=f"Error while sending embed follow-up message: {e}")
+
+    async def _channel_send_embed(self, channel: discord.TextChannel, title: str, msg: str, icon: str = "", is_error: bool = False, color: Optional["discord.Color"] = None) -> None:
+        if msg is None or msg.strip() == "":
+            return
+
+        logging.info(msg=f"Sending embed to channel '{channel.name}' ('{title}'):\n{msg}")
+
+        embed_color: "discord.Color" = color if color is not None else self._infer_embed_color(text=msg, is_error=is_error)
+        display_title: str = f"{icon} {title}".strip()
+        chunks: List[str] = self._split_text_for_embed(text=msg)
+
+        for index, chunk in enumerate(chunks):
+            page_title: str = display_title if len(chunks) == 1 else f"{display_title} ({index + 1}/{len(chunks)})"
+            embed: "discord.Embed" = self._build_result_embed(title=page_title, description=chunk, color=embed_color)
+            try:
+                await channel.send(embed=embed)
+            except Exception as e:
+                logging.error(msg=f"Error while sending embed message to channel: {e}")
+
     async def _delete_message_with_rate_limit_retry(self, message: discord.Message, reason: str, max_retries: int = 10, on_rate_limit: Optional[Callable[[], None]] = None) -> None:
         for attempt in range(max_retries + 1):
             try:
@@ -462,24 +463,24 @@ class DiscordBotLinuxMonitor:
                         logging.info(msg="Found the public channel, it will be possible to do public commands.")
                         public_channel_cmd_ready = True
                         if self.welcome_message_for_public_commands != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_public_commands))
+                            await self._channel_send_embed(channel=channel, title="Welcome", icon="👋", msg=self._welcome_message_with_version(self.welcome_message_for_public_commands), color=discord.Color.blurple())
 
                     if self.channel_name_for_private_commands != "" and channel.name == self.channel_name_for_private_commands:
                         logging.info(msg="Found the private channel, it will be possible to do private commands.")
                         private_channel_cmd_ready = True
                         if self.welcome_message_for_private_commands != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_private_commands))
+                            await self._channel_send_embed(channel=channel, title="Welcome", icon="👋", msg=self._welcome_message_with_version(self.welcome_message_for_private_commands), color=discord.Color.blurple())
 
                     if self.channel_name_for_public_error_tasks != "" and channel.name == self.channel_name_for_public_error_tasks:
                         logging.info(msg="Found the public channel for error task, it will be possible to show public status issues if found periodically.")
                         public_channel_error_task_ready = True
 
                         if self.welcome_message_for_public_error_tasks != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_public_error_tasks))
+                            await self._channel_send_embed(channel=channel, title="Welcome", icon="👋", msg=self._welcome_message_with_version(self.welcome_message_for_public_error_tasks), color=discord.Color.blurple())
 
                         logging.info(msg=f"Activating automatic public follow and public service restart if down with '{self.bot.user}' and guild '{guild.name}' (id: '{guild.id}') on channel '{channel.name}' (id '{channel.id}').")
                         public_channel_for_error_task: discord.TextChannel = channel
-                        send_message_public_error_task_func: Callable[[str], Awaitable[None]] = lambda msg: asyncio.create_task(self._channel_send_no_limit(channel=public_channel_for_error_task, msg=msg))
+                        send_message_public_error_task_func: Callable[[str], Awaitable[None]] = lambda msg: asyncio.create_task(self._channel_send_embed(channel=public_channel_for_error_task, title="Monitoring Alert", icon="🚨", msg=msg, is_error=True))
 
                         # Start the public schedule task
                         self.bot.loop.create_task(self.monitoring.schedule_task(handle_error_message=send_message_public_error_task_func, is_private=False))
@@ -489,11 +490,11 @@ class DiscordBotLinuxMonitor:
                         public_channel_info_task_ready = True
 
                         if self.welcome_message_for_public_infos_tasks != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_public_infos_tasks))
+                            await self._channel_send_embed(channel=channel, title="Welcome", icon="👋", msg=self._welcome_message_with_version(self.welcome_message_for_public_infos_tasks), color=discord.Color.blurple())
 
                         logging.info(msg=f"Activating automatic public follow info with '{self.bot.user}' and guild '{guild.name}' (id: '{guild.id}') on channel '{channel.name}' (id '{channel.id}').")
                         public_channel_for_info_task: discord.TextChannel = channel
-                        send_message_public_info_task_func: Callable[[str], Awaitable[None]] = lambda msg: asyncio.create_task(self._channel_send_no_limit(channel=public_channel_for_info_task, msg=msg))
+                        send_message_public_info_task_func: Callable[[str], Awaitable[None]] = lambda msg: asyncio.create_task(self._channel_send_embed(channel=public_channel_for_info_task, title="Periodic Status", icon="📊", msg=msg))
 
                         # Start the public schedule task
                         self.bot.loop.create_task(self.monitoring.schedule_task_show_info(show_message=send_message_public_info_task_func, is_private=False))
@@ -503,11 +504,11 @@ class DiscordBotLinuxMonitor:
                         private_channel_error_task_ready = True
 
                         if self.welcome_message_for_private_error_tasks != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_private_error_tasks))
+                            await self._channel_send_embed(channel=channel, title="Welcome", icon="👋", msg=self._welcome_message_with_version(self.welcome_message_for_private_error_tasks), color=discord.Color.blurple())
 
                         logging.info(msg=f"Activating automatic private follow and public service restart if down with '{self.bot.user}' and guild '{guild.name}' (id: '{guild.id}') on channel '{channel.name}' (id '{channel.id}').")
                         private_channel_for_error_task: discord.TextChannel = channel
-                        send_message_private_error_task_func: Callable[[str], Awaitable[None]] = lambda msg: asyncio.create_task(self._channel_send_no_limit(channel=private_channel_for_error_task, msg=msg))
+                        send_message_private_error_task_func: Callable[[str], Awaitable[None]] = lambda msg: asyncio.create_task(self._channel_send_embed(channel=private_channel_for_error_task, title="Monitoring Alert", icon="🚨", msg=msg, is_error=True))
 
                         # Start the private schedule task
                         self.bot.loop.create_task(self.monitoring.schedule_task(handle_error_message=send_message_private_error_task_func, is_private=True))
@@ -517,11 +518,11 @@ class DiscordBotLinuxMonitor:
                         private_channel_info_task_ready = True
 
                         if self.welcome_message_for_private_infos_tasks != "":
-                            await self._channel_send_no_limit(channel=channel, msg=self._welcome_message_with_version(self.welcome_message_for_private_infos_tasks))
+                            await self._channel_send_embed(channel=channel, title="Welcome", icon="👋", msg=self._welcome_message_with_version(self.welcome_message_for_private_infos_tasks), color=discord.Color.blurple())
 
                         logging.info(msg=f"Activating automatic private follow info with '{self.bot.user}' and guild '{guild.name}' (id: '{guild.id}') on channel '{channel.name}' (id '{channel.id}').")
                         private_channel_for_info_task: discord.TextChannel = channel
-                        send_message_private_info_task_func: Callable[[str], Awaitable[None]] = lambda msg: asyncio.create_task(self._channel_send_no_limit(channel=private_channel_for_info_task, msg=msg))
+                        send_message_private_info_task_func: Callable[[str], Awaitable[None]] = lambda msg: asyncio.create_task(self._channel_send_embed(channel=private_channel_for_info_task, title="Periodic Status", icon="📊", msg=msg))
 
                         # Start the private schedule task
                         self.bot.loop.create_task(self.monitoring.schedule_task_show_info(show_message=send_message_private_info_task_func, is_private=True))
@@ -576,7 +577,7 @@ class DiscordBotLinuxMonitor:
         out_msg: str = await self._force_sync()
 
         # Respond to the user
-        await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+        await self._interaction_followup_send_embed(interaction=interaction, title="Command Synchronization", icon="🔄", msg=out_msg)
 
     async def version(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -586,9 +587,11 @@ class DiscordBotLinuxMonitor:
 
         out_msg: str = (
             f"🤖 Bot version: {__version__}\n"
-            f"🐍 Python compatibility: {__python_version__}"
+            f"� Linux Monitor library version: {self.monitoring.get_raw_version()}\n"
+            f"�🐍 Python compatibility: {__python_version__}"
         )
-        await interaction.response.send_message(content=out_msg, ephemeral=True)
+        embed = self._build_result_embed(title="🤖 Bot Version", description=out_msg, color=discord.Color.blurple())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def usage(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -619,11 +622,11 @@ class DiscordBotLinuxMonitor:
                 out_msg += self.monitoring.get_network_info()
 
             # Respond to the user
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="System Usage", icon="📊", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error retrieving usage info**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="System Usage", icon="📊", msg=out_msg, is_error=True)
 
     async def os_infos(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -642,11 +645,11 @@ class DiscordBotLinuxMonitor:
             out_msg += self.monitoring.get_server_datetime()
 
             # Respond to the user
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="OS Information", icon="🖥️", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error retrieving OS info**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="OS Information", icon="🖥️", msg=out_msg, is_error=True)
 
     async def users(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -664,11 +667,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = self.monitoring.get_connected_users()
 
             # Respond to the user
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Connected Users", icon="👥", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error retrieving connected users**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Connected Users", icon="👥", msg=out_msg, is_error=True)
 
     async def user_logins(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -688,12 +691,12 @@ class DiscordBotLinuxMonitor:
             out_msg: str = self.monitoring.check_all_recent_user_logins(display_only_if_critical=False)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Recent User Logins", icon="🔐", msg=out_msg)
 
         except Exception as e:
             out_msg = f"**Internal error retrieving last user connections**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Recent User Logins", icon="🔐", msg=out_msg, is_error=True)
 
     async def ping(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -709,11 +712,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.ping_all_websites(is_private=is_private, display_only_if_critical=False)
 
             # Respond to the user
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Websites Ping", icon="📡", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error during websites ping **:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Websites Ping", icon="📡", msg=out_msg, is_error=True)
 
     async def websites(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -729,11 +732,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.check_all_websites(is_private=is_private, display_only_if_critical=False)
 
             # Respond to the user
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Websites Access", icon="🌐", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error during websites access check **:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Websites Access", icon="🌐", msg=out_msg, is_error=True)
 
     async def certificates(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -749,11 +752,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = self.monitoring.check_all_certificates(is_private=is_private, display_only_if_critical=False)
 
             # Respond to the user
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="SSL Certificates", icon="🔒", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error during SSL certificate checks **:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="SSL Certificates", icon="🔒", msg=out_msg, is_error=True)
 
     async def reboot(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -769,12 +772,12 @@ class DiscordBotLinuxMonitor:
 
         try:
             out_msg: str = await self.monitoring.reboot_server()
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Server Reboot", icon="🔁", msg=out_msg)
 
         except Exception as e:
             out_msg = f"**Internal error during server reboot**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Server Reboot", icon="🔁", msg=out_msg, is_error=True)
 
     async def services_status(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -790,11 +793,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.check_all_services_status(is_private=is_private)
 
             # Respond to the user
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Services Status", icon="⚙️", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error checking services are running**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Services Status", icon="⚙️", msg=out_msg, is_error=True)
 
     async def restart_all(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -811,11 +814,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.restart_all_services(is_private=is_private)
 
             # Respond to the user
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Restart All Services", icon="🔄", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error restarting all services**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Restart All Services", icon="🔄", msg=out_msg, is_error=True)
 
     async def restart_service(self, interaction: discord.Interaction, service_name: str) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -832,12 +835,12 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.restart_service(is_private=is_private, service_name=service_name, force_restart=True)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Restart Service", icon="🔄", msg=out_msg)
 
         except Exception as e:
             out_msg = f"**Internal error restarting service {service_name}**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Restart Service", icon="🔄", msg=out_msg, is_error=True)
 
     async def stop_service(self, interaction: discord.Interaction, service_name: str) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -854,11 +857,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.stop_service(is_private=is_private, service_name=service_name)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Stop Service", icon="🛑", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error stopping service {service_name}**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Stop Service", icon="🛑", msg=out_msg, is_error=True)
 
     async def list_services(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -875,11 +878,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = self.monitoring.get_all_services(is_private=is_private)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Available Services", icon="📋", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error retrieving available services**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Available Services", icon="📋", msg=out_msg, is_error=True)
 
     async def ports(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -896,11 +899,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.check_all_ports(is_private=is_private, display_only_if_critical=False)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Ports Status", icon="🔌", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error checking ports**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Ports Status", icon="🔌", msg=out_msg, is_error=True)
 
     async def list_processes(self, interaction: discord.Interaction, order_by_ram: bool) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -919,11 +922,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.get_ordered_processes(get_non_consuming_processes=False, order_by_ram=order_by_ram, max_processes=20)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Processes List", icon="🧮", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error retrieving active processes**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Processes List", icon="🧮", msg=out_msg, is_error=True)
 
     async def kill_process(self, interaction: discord.Interaction, pid: int) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -942,11 +945,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.kill_process(pid=pid)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Kill Process", icon="☠️", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error stopping process of PID {pid}**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Kill Process", icon="☠️", msg=out_msg, is_error=True)
 
     async def clear_channel_messages(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1161,11 +1164,11 @@ class DiscordBotLinuxMonitor:
             out_msg += "**✅ Clearable:**\n" + ("\n".join(clearable_lines) if clearable_lines else "None") + "\n\n"
             out_msg += "**❌ Blocked (missing bot permission):**\n" + ("\n".join(blocked_lines) if blocked_lines else "None")
 
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Clearable Channels", icon="🧹", msg=out_msg, ephemeral=True)
         except Exception as e:
             out_msg = f"**Internal error listing clearable channels**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Clearable Channels", icon="🧹", msg=out_msg, is_error=True, ephemeral=True)
 
     async def list_commands(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1182,12 +1185,29 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.list_commands(is_private=is_private)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Available Commands", icon="📖", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error retrieving available commands**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Available Commands", icon="📖", msg=out_msg, is_error=True)
 
+
+    async def autocomplete_command_name(self, interaction: discord.Interaction, current: str) -> List["app_commands.Choice[str]"]:
+        # Suggest the configured command names so the user picks from a list instead of typing them.
+        try:
+            is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
+            current_lower: str = current.lower()
+            choices: List["app_commands.Choice[str]"] = []
+            for command_name, display_name in self.monitoring.get_command_names(is_private=is_private):
+                if current_lower == "" or current_lower in command_name.lower() or current_lower in display_name.lower():
+                    label: str = f"{command_name} — {display_name}"
+                    choices.append(app_commands.Choice(name=label[:100], value=command_name))
+                if len(choices) >= 25: # Discord limits autocomplete to 25 choices
+                    break
+            return choices
+        except Exception as e:
+            logging.error(msg=f"Error while building command autocomplete: {e}")
+            return []
 
     async def execute_command(self, interaction: discord.Interaction, command_name: str, parameters: str = "") -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1204,11 +1224,11 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.execute_command(is_private=is_private, command_name=command_name, parameters=parameters)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title=f"Execute Command — {command_name}", icon="▶️", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error executing command '{command_name}'**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title=f"Execute Command — {command_name}", icon="▶️", msg=out_msg, is_error=True)
 
     async def execute_all_commands(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1225,10 +1245,10 @@ class DiscordBotLinuxMonitor:
             out_msg: str = await self.monitoring.execute_all_commands(is_private=is_private)
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Execute All Commands", icon="⏩", msg=out_msg)
         except Exception as e:
             out_msg = f"**Internal error executing all commands**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_no_limit(interaction=interaction, msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Execute All Commands", icon="⏩", msg=out_msg, is_error=True)
 
     #endregion

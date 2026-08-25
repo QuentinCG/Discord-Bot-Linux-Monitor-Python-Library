@@ -5,6 +5,7 @@ import sys
 import logging
 
 import discord
+from discord import app_commands
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='System Management Tool controled from Discord')
@@ -139,6 +140,7 @@ def main() -> None:
         await discord_bot_linux_monitor.list_commands(interaction)
 
     @discord_bot.tree.command(name="execute_command", description="🚀 Execute a command (optional parameters) 🚀")
+    @app_commands.autocomplete(command_name=discord_bot_linux_monitor.autocomplete_command_name)
     async def execute_command(interaction: discord.Interaction, command_name: str, parameters: str = "") -> None: # type: ignore
         await discord_bot_linux_monitor.execute_command(interaction, command_name=command_name, parameters=parameters)
 
