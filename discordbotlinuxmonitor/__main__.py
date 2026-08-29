@@ -168,7 +168,7 @@ def main() -> None:
     async def help_command(interaction: discord.Interaction, command_name: str = "") -> None: # type: ignore
         await discord_bot_linux_monitor.show_help(interaction, command_name)
 
-    @discord_bot.tree.command(name="list_periodic_channels_cleanup", description="🧹 Show auto-cleanup channel configuration and permission status 🧹")
+    @discord_bot.tree.command(name="list_periodic_channels_cleanup", description="[Private] 🧹 Show auto-cleanup channel configuration and permission status 🧹")
     @app_commands.checks.cooldown(3, 20.0)
     async def list_periodic_channels_cleanup(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.show_list_periodic_channels_cleanup(interaction)
