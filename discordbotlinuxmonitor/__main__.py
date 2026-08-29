@@ -163,6 +163,11 @@ def main() -> None:
     async def list_commands(interaction: discord.Interaction) -> None: # type: ignore
         await discord_bot_linux_monitor.list_commands(interaction)
 
+    @discord_bot.tree.command(name="help", description="🔍 Show Discord bot commands with info and cooldowns 🔍")
+    @app_commands.checks.cooldown(3, 20.0)
+    async def help_command(interaction: discord.Interaction, command_name: str = "") -> None: # type: ignore
+        await discord_bot_linux_monitor.show_help(interaction, command_name)
+
     @discord_bot.tree.command(name="execute_command", description="🚀 Execute a command (optional parameters) 🚀")
     @app_commands.autocomplete(command_name=discord_bot_linux_monitor.autocomplete_command_name)
     @app_commands.checks.cooldown(3, 20.0)  # 3 uses per 20 seconds

@@ -75,6 +75,45 @@ class ConfirmationView(discord.ui.View):
         self.confirmed = False
 
 
+class PaginationView(discord.ui.View):
+    """Pagination view for long messages with prev/next buttons."""
+    def __init__(self, chunks: List[str], timeout: float = 180.0):
+        super().__init__(timeout=timeout)
+        self.chunks = chunks
+        self.current_page: int = 0
+        self.total_pages: int = len(chunks)
+        self.message: Optional[discord.Message] = None
+        self._update_button_states()
+
+    def _update_button_states(self) -> None:
+        """Update button disabled states based on current page."""
+        self.prev_button.disabled = self.current_page <= 0
+        self.next_button.disabled = self.current_page >= self.total_pages - 1
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.gray)
+    async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if self.current_page > 0:
+            self.current_page -= 1
+            self._update_button_states()
+            await interaction.response.defer()
+            if self.message:
+                await self.message.edit(view=self)
+
+    @discord.ui.button(label="▶️ Next", style=discord.ButtonStyle.gray)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self._update_button_states()
+            await interaction.response.defer()
+            if self.message:
+                await self.message.edit(view=self)
+
+    async def on_timeout(self) -> None:
+        """Disable buttons after timeout."""
+        for item in self.children:
+            item.disabled = True
+
+
 class DiscordBotLinuxMonitor:
 
     #region Initialization
@@ -401,8 +440,8 @@ class DiscordBotLinuxMonitor:
             chunks.append(remaining)
         return chunks
 
-    async def _interaction_followup_send_embed(self, interaction: discord.Interaction, title: str, msg: str, icon: str = "", is_error: bool = False, ephemeral: bool = False) -> None:
-        """Send an embed message via interaction followup. Handles chunking for long messages and prevents duplicate sends."""
+    async def _interaction_followup_send_embed(self, interaction: discord.Interaction, title: str, msg: str, icon: str = "", is_error: bool = False, ephemeral: bool = False, enable_pagination: bool = True) -> None:
+        """Send an embed message via interaction followup. Handles pagination for long messages."""
         if msg is None or msg.strip() == "":
             msg = "No answer."
 
@@ -415,15 +454,73 @@ class DiscordBotLinuxMonitor:
         chunks: List[str] = self._split_text_for_embed(text=msg)
 
         try:
-            for index, chunk in enumerate(chunks):
-                page_title: str = display_title if len(chunks) == 1 else f"{display_title} ({index + 1}/{len(chunks)})"
-                embed: "discord.Embed" = self._build_result_embed(title=page_title, description=chunk, color=color)
+            # If single chunk or pagination disabled, send normally
+            if len(chunks) <= 1 or not enable_pagination:
+                for index, chunk in enumerate(chunks):
+                    page_title: str = display_title if len(chunks) == 1 else f"{display_title} ({index + 1}/{len(chunks)})"
+                    embed: "discord.Embed" = self._build_result_embed(title=page_title, description=chunk, color=color)
+                    try:
+                        await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+                    except discord.InteractionResponded:
+                        logging.debug(msg=f"Interaction already responded for {title}")
+                        return
+            else:
+                # Multiple chunks: use pagination
+                class PaginatedEmbedView(discord.ui.View):
+                    def __init__(self, paginator_self, chunks: List[str], title_template: str, color: discord.Color, ephemeral: bool):
+                        super().__init__(timeout=180.0)
+                        self.paginator = paginator_self
+                        self.chunks = chunks
+                        self.title_template = title_template
+                        self.color = color
+                        self.current_page = 0
+                        self.message: Optional[discord.Message] = None
+                        self.ephemeral = ephemeral
+                        self._update_buttons()
+
+                    def _update_buttons(self) -> None:
+                        self.prev_btn.disabled = self.current_page <= 0
+                        self.next_btn.disabled = self.current_page >= len(self.chunks) - 1
+
+                    async def _update_embed(self, interaction: discord.Interaction) -> None:
+                        chunk = self.chunks[self.current_page]
+                        page_title = f"{self.title_template} ({self.current_page + 1}/{len(self.chunks)})"
+                        embed = self.paginator._build_result_embed(title=page_title, description=chunk, color=self.color)
+                        await interaction.response.defer()
+                        if self.message:
+                            await self.message.edit(embed=embed, view=self)
+
+                    @discord.ui.button(label="◀️", style=discord.ButtonStyle.gray)
+                    async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+                        if self.current_page > 0:
+                            self.current_page -= 1
+                            self._update_buttons()
+                            await self._update_embed(interaction)
+
+                    @discord.ui.button(label="▶️", style=discord.ButtonStyle.gray)
+                    async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+                        if self.current_page < len(self.chunks) - 1:
+                            self.current_page += 1
+                            self._update_buttons()
+                            await self._update_embed(interaction)
+
+                    async def on_timeout(self) -> None:
+                        for item in self.children:
+                            item.disabled = True
+                        if self.message:
+                            try:
+                                await self.message.edit(view=self)
+                            except Exception:
+                                pass
+
+                view = PaginatedEmbedView(self, chunks, display_title, color, ephemeral)
+                embed = self._build_result_embed(title=f"{display_title} (1/{len(chunks)})", description=chunks[0], color=color)
                 try:
-                    await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+                    view.message = await interaction.followup.send(embed=embed, view=view, ephemeral=ephemeral)
                 except discord.InteractionResponded:
-                    # Already responded, skip
                     logging.debug(msg=f"Interaction already responded for {title}")
                     return
+
         except Exception as e:
             logging.error(msg=f"Error while sending embed follow-up message: {e}")
 
@@ -1277,6 +1374,71 @@ class DiscordBotLinuxMonitor:
             out_msg = f"**Internal error retrieving available commands**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
             await self._interaction_followup_send_embed(interaction=interaction, title="Available Commands", icon="📖", msg=out_msg, is_error=True)
+
+    async def show_help(self, interaction: discord.Interaction, command_name: str = "") -> None:
+        """Show help for Discord bot commands with cooldown info."""
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+
+        await interaction.response.defer()
+
+        try:
+            # Get all commands from the bot tree
+            commands_list: List[str] = []
+            
+            # Command metadata with descriptions, cooldowns, and requirements
+            command_info = {
+                "force_sync": {"desc": "🔄 Force command synchronization", "cooldown": "3/20s", "private": True},
+                "version": {"desc": "🤖 Show bot version", "cooldown": "3/20s", "private": False},
+                "usage": {"desc": "📊 View disk space, CPU, RAM", "cooldown": "3/20s", "private": False},
+                "os_infos": {"desc": "🖥️ View basic system info", "cooldown": "3/20s", "private": False},
+                "users": {"desc": "👥 View connected users (private)", "cooldown": "3/20s", "private": True},
+                "user_logins": {"desc": "👥 View last user connections (private)", "cooldown": "3/20s", "private": True},
+                "ping": {"desc": "🌐 Ping websites", "cooldown": "3/20s", "private": False},
+                "websites": {"desc": "🌐 Check website access", "cooldown": "3/20s", "private": False},
+                "certificates": {"desc": "🔒 Check SSL certificates", "cooldown": "3/20s", "private": False},
+                "reboot_server": {"desc": "🔄 Restart the entire server (private, requires confirmation)", "cooldown": "1/60s", "private": True},
+                "services_status": {"desc": "🩺 Check services status", "cooldown": "3/20s", "private": False},
+                "restart_all": {"desc": "🚀 Restart all services", "cooldown": "1/30s", "private": False},
+                "restart_service": {"desc": "🚀 Restart a specific service", "cooldown": "3/20s", "private": False},
+                "stop_service": {"desc": "🛑 Stop a service", "cooldown": "3/20s", "private": False},
+                "list_services": {"desc": "📋 List all services", "cooldown": "3/20s", "private": False},
+                "ports": {"desc": "🔒 Check ports", "cooldown": "3/20s", "private": False},
+                "list_processes": {"desc": "📋 List processes by RAM (private)", "cooldown": "3/20s", "private": True},
+                "list_processes_by_cpu_usage": {"desc": "📋 List processes by CPU (private)", "cooldown": "3/20s", "private": True},
+                "kill_process": {"desc": "☠️ Kill process by PID (private)", "cooldown": "3/20s", "private": True},
+                "clear_channel_messages": {"desc": "🧹 Clear channel messages (private, destructive)", "cooldown": "1/120s", "private": True},
+                "list_clearable_channels": {"desc": "🧹 Show clearable channels (private)", "cooldown": "3/20s", "private": True},
+                "list_commands": {"desc": "📋 List Linux monitor commands", "cooldown": "3/20s", "private": False},
+                "execute_command": {"desc": "🚀 Execute a Linux command", "cooldown": "3/20s", "private": False},
+                "execute_all_commands": {"desc": "🚀 Execute all Linux commands", "cooldown": "1/60s", "private": False},
+                "help": {"desc": "🔍 Show this help message", "cooldown": "3/20s", "private": False},
+            }
+
+            # Filter by command name if provided
+            if command_name:
+                command_name_lower = command_name.lower()
+                matching_cmds = {k: v for k, v in command_info.items() if command_name_lower in k.lower()}
+                if not matching_cmds:
+                    out_msg = f"❌ No commands found matching '{command_name}'"
+                    await self._interaction_followup_send_embed(interaction=interaction, title="Help", icon="🔍", msg=out_msg)
+                    return
+                command_info = matching_cmds
+
+            # Build help text
+            out_msg = ""
+            for cmd, info in sorted(command_info.items()):
+                private_indicator = "🔒 Private" if info["private"] else "🌐 Public"
+                out_msg += f"**/{cmd}** — {info['desc']}\n"
+                out_msg += f"  └─ {private_indicator} | ⏳ Cooldown: {info['cooldown']}\n\n"
+
+            await self._interaction_followup_send_embed(interaction=interaction, title="Discord Bot Commands Help", icon="🔍", msg=out_msg)
+        except Exception as e:
+            out_msg = f"**Internal error retrieving help**:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Help", icon="🔍", msg=out_msg, is_error=True)
 
 
     async def autocomplete_command_name(self, interaction: discord.Interaction, current: str) -> List["app_commands.Choice[str]"]:
