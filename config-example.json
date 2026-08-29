@@ -36,6 +36,7 @@
         "welcome_message_for_public_infos_tasks": "🤖 Linux Monitoring bot started 🤖\nI'll inform you periodically about the Linux server public status."
     },
     "basic_config": {
+        "### EXPLANATION ###": "Thresholds for system monitoring alerts. Warning values trigger alerts; critical values indicate severe issues.",
         "critical_load_average_percent": 90.0,
         "warning_load_average_percent": 80.0,
         "critical_cpu_percent": 90.0,
@@ -56,13 +57,33 @@
         ]
     },
     "scheduled_tasks_check_for_issues": {
+        "### EXPLANATION ###": "Periodic task that monitors for system issues. duration_in_sec_before_first_execution: wait before starting; duration_in_sec_wait_between_each_execution: interval between checks.",
         "max_duration_seconds_showing_same_error": 36000,
-        "start_immediately": true,
+        "duration_in_sec_before_first_execution": 3600,
         "duration_in_sec_wait_between_each_execution": 1800
     },
     "scheduled_tasks_show_infos": {
-        "start_immediately": false,
+        "### EXPLANATION ###": "Periodic task that broadcasts system information. duration_in_sec_before_first_execution: wait before first run (86400 = 1 day); duration_in_sec_wait_between_each_execution: repeat interval.",
+        "duration_in_sec_before_first_execution": 3600,
         "duration_in_sec_wait_between_each_execution": 86400
+    },
+    "periodic_channel_cleanup": {
+        "### EXPLANATION ###": "Automatically clean up messages in specified channels. duration_in_sec_before_first_execution: wait before first cleanup; duration_in_sec_wait_between_each_execution: repeat interval (604800 = 7 days).",
+        "enabled": true,
+        "duration_in_sec_before_first_execution": 604800,
+        "duration_in_sec_wait_between_each_execution": 604800,
+        "channels": [
+            {
+                "channel_name": "🤖 Private Linux monitor CMD 🤖",
+                "min_days_to_keep": 7,
+                "description": "Auto-clean command channel, keep messages from last 7 days"
+            },
+            {
+                "channel_name": "📢 Private Linux periodic state info 📢",
+                "min_days_to_keep": 30,
+                "description": "Auto-clean info channel, keep messages from last 30 days"
+            }
+        ]
     },
     "pings": [
         {
@@ -215,6 +236,7 @@
         }
     ],
     "recent_user_connections": {
+        "### EXPLANATION ###": "Monitor recent SSH/user logins. Set allow_all: false and specify allowed_ips to restrict alerts to specific sources. max_days limits how far back to check.",
         "allow_all": false,
         "max_days": 1,
         "allowed_ips": [

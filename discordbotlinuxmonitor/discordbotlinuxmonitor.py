@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.6.8 (2026/08/29)"
+__version__ = "1.7.0 (2026/08/29)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -137,6 +137,9 @@ class DiscordBotLinuxMonitor:
         self.force_sync_on_startup: bool = force_sync_on_startup
         intents: discord.Intents = discord.Intents.default()
         self.bot = commands.Bot(command_prefix=self.command_prefix, intents=intents)
+        
+        # Initialize cleanup task
+        self.cleanup_task: Optional[asyncio.Task] = None
 
     def _init_and_check_configuration(self) -> None:
         """
@@ -250,6 +253,25 @@ class DiscordBotLinuxMonitor:
     def _get_cached_service_names(self, is_private: bool) -> List[Tuple[str, str]]:
         """Cache service names permanently since they never change at runtime."""
         return self.monitoring.get_service_names(is_private=is_private)
+
+    def _is_periodic_cleanup_enabled(self) -> bool:
+        """Check if periodic channel cleanup is enabled in config."""
+        cleanup_config = self.config.get('periodic_channel_cleanup', {})  # type: ignore
+        return cleanup_config.get('enabled', False)
+
+    def _get_cleanup_interval(self) -> float:
+        """Get the interval (in seconds) between cleanup cycles."""
+        cleanup_config = self.config.get('periodic_channel_cleanup', {})  # type: ignore
+        return float(cleanup_config.get('duration_in_sec_wait_between_each_execution', 604800))
+
+    def _get_cleanup_initial_delay(self) -> float:
+        """Get the initial delay (in seconds) before first cleanup execution."""
+        cleanup_config = self.config.get('periodic_channel_cleanup', {})  # type: ignore
+        return float(cleanup_config.get('duration_in_sec_before_first_execution', 604800))
+
+    def _should_cleanup_start_immediately(self) -> bool:
+        """Check if cleanup should start immediately (duration = 0)."""
+        return self._get_cleanup_initial_delay() == 0
 
     def _check_if_valid_guild(self, guild: Union[None,discord.Guild]) -> bool:
         if guild is None:
@@ -590,6 +612,97 @@ class DiscordBotLinuxMonitor:
                     continue
                 raise
 
+    async def _setup_periodic_cleanup_task(self) -> None:
+        """Setup and start the periodic channel cleanup task."""
+        if not self._is_periodic_cleanup_enabled():
+            logging.info(msg="Periodic channel cleanup is disabled in config")
+            return
+
+        logging.info(msg="Setting up periodic channel cleanup task")
+        self.cleanup_task = asyncio.create_task(self._periodic_cleanup_loop())
+
+    async def _periodic_cleanup_loop(self) -> None:
+        """Loop that periodically cleans configured channels."""
+        await self.bot.wait_until_ready()
+        
+        # Wait before first execution if not immediate
+        if not self._should_cleanup_start_immediately():
+            initial_delay = self._get_cleanup_initial_delay()
+            logging.info(msg=f"Periodic cleanup scheduled for {self._format_duration(initial_delay)} from now")
+            await asyncio.sleep(initial_delay)
+        
+        while True:
+            try:
+                for guild in self.bot.guilds:
+                    if guild.id == self.server_id:
+                        await self._execute_cleanup_cycle(guild)
+            except Exception as e:
+                logging.error(msg=f"Error in cleanup loop: {e}")
+            
+            interval = self._get_cleanup_interval()
+            await asyncio.sleep(interval)
+
+    async def _execute_cleanup_cycle(self, guild: discord.Guild) -> None:
+        """Execute cleanup for all configured channels."""
+        cleanup_config = self.config.get('periodic_channel_cleanup', {})  # type: ignore
+        channels_config = cleanup_config.get('channels', [])
+        
+        if not channels_config:
+            return
+        
+        logging.info(msg=f"Starting periodic cleanup cycle for {len(channels_config)} channels")
+        
+        for channel_config in channels_config:
+            try:
+                channel_name = channel_config.get('channel_name')
+                min_days = channel_config.get('min_days_to_keep', 7)
+                description = channel_config.get('description', '')
+                
+                if not channel_name:
+                    logging.warning(msg="Cleanup config entry missing 'channel_name'")
+                    continue
+                
+                channel = discord.utils.get(guild.text_channels, name=channel_name)
+                if not channel:
+                    logging.warning(msg=f"Cleanup channel '{channel_name}' not found in guild")
+                    continue
+                
+                # Check permissions
+                bot_member = guild.me
+                if bot_member is None:
+                    logging.warning(msg="Unable to resolve bot member for cleanup")
+                    continue
+                
+                permissions = channel.permissions_for(bot_member)
+                if not permissions.manage_messages or not permissions.read_message_history:
+                    logging.warning(msg=f"Bot missing permissions for cleanup in channel '{channel_name}'")
+                    continue
+                
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=min_days)
+                deleted_count = 0
+                
+                async for message in channel.history(oldest_first=False):
+                    if message.created_at < cutoff_date:
+                        try:
+                            await self._delete_message_with_rate_limit_retry(
+                                message=message,
+                                reason=f"Periodic cleanup - keeping messages newer than {min_days} days"
+                            )
+                            deleted_count += 1
+                        except Exception as e:
+                            logging.warning(msg=f"Failed to delete message in cleanup: {e}")
+                            # Continue with next message
+                            continue
+                
+                log_msg = f"Periodic cleanup #{channel_name}: Deleted {deleted_count} messages (kept last {min_days} days)"
+                if description:
+                    log_msg += f" - {description}"
+                logging.info(msg=log_msg)
+                
+            except Exception as e:
+                logging.error(msg=f"Error cleaning up channel '{channel_config.get('channel_name', 'unknown')}': {e}")
+                continue
+
     #endregion
 
     #region BOT COMMANDS AND EVENTS DEFINITIONS
@@ -710,6 +823,9 @@ class DiscordBotLinuxMonitor:
             # Sync the bot's commands globally
             if self.force_sync_on_startup:
                 await self._force_sync()
+
+        # Setup periodic channel cleanup task
+        await self._setup_periodic_cleanup_task()
 
     async def force_sync(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1375,6 +1491,128 @@ class DiscordBotLinuxMonitor:
             logging.exception(msg=out_msg)
             await self._interaction_followup_send_embed(interaction=interaction, title="Available Commands", icon="📖", msg=out_msg, is_error=True)
 
+    async def show_list_periodic_channels_cleanup(self, interaction: discord.Interaction) -> None:
+        """Show auto-cleanup channel configuration and permission status."""
+        if not self._check_if_valid_guild(guild=interaction.guild):
+            return
+        if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
+            return
+        if not self._is_private_channel(channel=interaction.channel):  # type: ignore
+            await interaction.response.send_message(content="❌ This command is only available in private channels.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        try:
+            # Check if cleanup is enabled
+            if not self._is_periodic_cleanup_enabled():
+                await self._interaction_followup_send_embed(
+                    interaction=interaction,
+                    title="Channel Auto-Cleanup Configuration",
+                    icon="🧹",
+                    msg="⚠️ **Periodic channel cleanup is DISABLED** in config"
+                )
+                return
+
+            cleanup_config = self.config.get('periodic_channel_cleanup', {})  # type: ignore
+            channels_config = cleanup_config.get('channels', [])
+
+            if not channels_config:
+                await self._interaction_followup_send_embed(
+                    interaction=interaction,
+                    title="Channel Auto-Cleanup Configuration",
+                    icon="🧹",
+                    msg="⚠️ **No channels configured** for auto-cleanup"
+                )
+                return
+
+            guild = interaction.guild
+            bot_member = guild.me if guild else None
+            
+            lines = [
+                f"**Status**: ✅ Enabled",
+                f"**Next Cleanup**: {self._format_duration(self._get_cleanup_initial_delay())} from bot start",
+                f"**Cleanup Interval**: Every {self._format_duration(self._get_cleanup_interval())}",
+                "",
+                "**Configured Channels**:",
+                ""
+            ]
+
+            for idx, channel_config in enumerate(channels_config, 1):
+                channel_name = channel_config.get('channel_name', 'unknown')
+                min_days = channel_config.get('min_days_to_keep', 7)
+                description = channel_config.get('description', '')
+
+                # Find channel
+                channel = discord.utils.get(guild.text_channels, name=channel_name) if guild else None
+                channel_status = "✅" if channel else "❌"
+
+                # Check permissions if channel exists
+                perms_status = "✅"
+                perms_details = []
+                if channel and bot_member:
+                    permissions = channel.permissions_for(bot_member)
+                    if not permissions.manage_messages:
+                        perms_status = "❌"
+                        perms_details.append("missing `manage_messages`")
+                    if not permissions.read_message_history:
+                        perms_status = "❌"
+                        perms_details.append("missing `read_message_history`")
+                elif channel and not bot_member:
+                    perms_status = "⚠️"
+                    perms_details.append("bot member not found")
+                elif not channel:
+                    perms_status = "N/A"
+                    perms_details.append("channel not found")
+
+                # Build channel line
+                channel_line = f"**{idx}. {channel_status} #{channel_name}**"
+                if description:
+                    channel_line += f"\n   📝 {description}"
+                channel_line += f"\n   🕐 Keep messages: Last {min_days} days"
+                channel_line += f"\n   🔐 Permissions: {perms_status}"
+                if perms_details:
+                    channel_line += f" ({', '.join(perms_details)})"
+
+                lines.append(channel_line)
+                lines.append("")
+
+            # Summary
+            summary_icon = "✅"
+            all_ok = all(
+                discord.utils.get(guild.text_channels, name=ch.get('channel_name', '')) and
+                (guild.me and 
+                 guild.me.permissions_for(discord.utils.get(guild.text_channels, name=ch.get('channel_name', ''))).manage_messages and
+                 guild.me.permissions_for(discord.utils.get(guild.text_channels, name=ch.get('channel_name', ''))).read_message_history)
+                for ch in channels_config
+            )
+            if not all_ok:
+                summary_icon = "⚠️"
+
+            lines.append(f"**Overall Status**: {summary_icon} " + ("All channels properly configured" if all_ok else "Some issues need attention"))
+
+            msg = "\n".join(lines)
+            is_error = not all_ok
+            
+            await self._interaction_followup_send_embed(
+                interaction=interaction,
+                title="Channel Auto-Cleanup Configuration",
+                icon="🧹",
+                msg=msg,
+                is_error=is_error
+            )
+
+        except Exception as e:
+            out_msg = f"**Internal error checking cleanup configuration**:\n```sh\n{e}\n```"
+            logging.exception(msg=out_msg)
+            await self._interaction_followup_send_embed(
+                interaction=interaction,
+                title="Channel Auto-Cleanup Configuration",
+                icon="🧹",
+                msg=out_msg,
+                is_error=True
+            )
+
     async def show_help(self, interaction: discord.Interaction, command_name: str = "") -> None:
         """Show help for Discord bot commands with cooldown info."""
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1415,17 +1653,24 @@ class DiscordBotLinuxMonitor:
                 "execute_command": {"desc": "🚀 Execute a Linux command", "cooldown": "3/20s", "private": False},
                 "execute_all_commands": {"desc": "🚀 Execute all Linux commands", "cooldown": "1/60s", "private": False},
                 "help": {"desc": "🔍 Show this help message", "cooldown": "3/20s", "private": False},
+                "list_periodic_channels_cleanup": {"desc": "🧹 Show auto-cleanup channel configuration and permission status", "cooldown": "3/20s", "private": True},
             }
 
+            # Filter commands based on channel privacy
+            is_private_channel = self._is_private_channel(channel=interaction.channel)  # type: ignore
+            filtered_commands = {k: v for k, v in command_info.items() if v.get("private", False) == is_private_channel or not v.get("private", False)}
+            
             # Filter by command name if provided
             if command_name:
                 command_name_lower = command_name.lower()
-                matching_cmds = {k: v for k, v in command_info.items() if command_name_lower in k.lower()}
+                matching_cmds = {k: v for k, v in filtered_commands.items() if command_name_lower in k.lower()}
                 if not matching_cmds:
                     out_msg = f"❌ No commands found matching '{command_name}'"
                     await self._interaction_followup_send_embed(interaction=interaction, title="Help", icon="🔍", msg=out_msg)
                     return
                 command_info = matching_cmds
+            else:
+                command_info = filtered_commands
 
             # Build help text
             out_msg = ""
