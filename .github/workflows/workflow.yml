@@ -1,8 +1,8 @@
 name: Publish Python Package
 
 # To trigger the workflow, you need to tag the library with a version number like this:
-#git tag v1.0.0
-#git push origin v1.0.0
+#git tag v1.6.x
+#git push origin v1.6.x
 
 on:
   push:

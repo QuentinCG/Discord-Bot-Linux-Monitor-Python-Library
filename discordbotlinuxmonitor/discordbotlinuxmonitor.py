@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.6.7 (2026/08/24)"
+__version__ = "1.6.8 (2026/08/29)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -1207,6 +1207,23 @@ class DiscordBotLinuxMonitor:
             return choices
         except Exception as e:
             logging.error(msg=f"Error while building command autocomplete: {e}")
+            return []
+
+    async def autocomplete_service_name(self, interaction: discord.Interaction, current: str) -> List["app_commands.Choice[str]"]:
+        # Suggest the configured service names so the user picks from a list instead of typing them.
+        try:
+            is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
+            current_lower: str = current.lower()
+            choices: List["app_commands.Choice[str]"] = []
+            for service_name, display_name in self.monitoring.get_service_names(is_private=is_private):
+                if current_lower == "" or current_lower in service_name.lower() or current_lower in display_name.lower():
+                    label: str = f"{service_name} — {display_name}"
+                    choices.append(app_commands.Choice(name=label[:100], value=service_name))
+                if len(choices) >= 25: # Discord limits autocomplete to 25 choices
+                    break
+            return choices
+        except Exception as e:
+            logging.error(msg=f"Error while building service autocomplete: {e}")
             return []
 
     async def execute_command(self, interaction: discord.Interaction, command_name: str, parameters: str = "") -> None:

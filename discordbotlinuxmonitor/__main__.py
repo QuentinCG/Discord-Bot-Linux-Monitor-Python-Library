@@ -100,10 +100,12 @@ def main() -> None:
         await discord_bot_linux_monitor.restart_all(interaction)
 
     @discord_bot.tree.command(name="restart_service", description="🚀 Restart a service 🚀")
+    @app_commands.autocomplete(service_name=discord_bot_linux_monitor.autocomplete_service_name)
     async def restart_service(interaction: discord.Interaction, service_name: str) -> None: # type: ignore
         await discord_bot_linux_monitor.restart_service(interaction, service_name)
 
     @discord_bot.tree.command(name="stop_service", description="🚫 Stop a service 🚫")
+    @app_commands.autocomplete(service_name=discord_bot_linux_monitor.autocomplete_service_name)
     async def stop_service(interaction: discord.Interaction, service_name: str) -> None: # type: ignore
         await discord_bot_linux_monitor.stop_service(interaction, service_name)
 
