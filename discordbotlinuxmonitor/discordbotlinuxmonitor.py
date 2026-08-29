@@ -586,9 +586,9 @@ class DiscordBotLinuxMonitor:
             return
 
         out_msg: str = (
-            f"🤖 Bot version: {__version__}\n"
-            f"� Linux Monitor library version: {self.monitoring.get_raw_version()}\n"
-            f"�🐍 Python compatibility: {__python_version__}"
+            f"🤖 Discord bot version: {__version__}\n"
+            f"- Linux Monitor library version: {self.monitoring.get_raw_version()}\n"
+            f"- 🐍 Python compatibility: {__python_version__}"
         )
         embed = self._build_result_embed(title="🤖 Bot Version", description=out_msg, color=discord.Color.blurple())
         await interaction.response.send_message(embed=embed, ephemeral=True)
