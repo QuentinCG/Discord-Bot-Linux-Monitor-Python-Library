@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.7.1 (2026/08/29)"
+__version__ = "1.7.2 (2026/08/29)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -1579,13 +1579,19 @@ class DiscordBotLinuxMonitor:
 
             # Summary
             summary_icon = "✅"
-            all_ok = all(
-                discord.utils.get(guild.text_channels, name=ch.get('channel_name', '')) and
-                (guild.me and 
-                 guild.me.permissions_for(discord.utils.get(guild.text_channels, name=ch.get('channel_name', ''))).manage_messages and
-                 guild.me.permissions_for(discord.utils.get(guild.text_channels, name=ch.get('channel_name', ''))).read_message_history)
-                for ch in channels_config
-            )
+            all_ok = True
+            for ch in channels_config:
+                channel_name = ch.get('channel_name', '')
+                channel = discord.utils.get(guild.text_channels, name=channel_name) if guild else None
+                if not channel or not bot_member:
+                    all_ok = False
+                    break
+
+                permissions = channel.permissions_for(bot_member)
+                if not permissions.manage_messages or not permissions.read_message_history:
+                    all_ok = False
+                    break
+
             if not all_ok:
                 summary_icon = "⚠️"
 
