@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.7.0 (2026/08/29)"
+__version__ = "1.7.1 (2026/08/29)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -820,9 +820,9 @@ class DiscordBotLinuxMonitor:
                 # Found an undesired guild, disconnect
                 logging.info(msg=f"Bot '{self.bot.user}' is connected to the following UNDESIRED guild: '{guild.name}' (id: '{guild.id}'), IGNORING THIS GUILD.")
 
-            # Sync the bot's commands globally
-            if self.force_sync_on_startup:
-                await self._force_sync()
+        # Sync the bot's commands globally (once, after all guilds are checked)
+        if self.force_sync_on_startup:
+            await self._force_sync()
 
         # Setup periodic channel cleanup task
         await self._setup_periodic_cleanup_task()
