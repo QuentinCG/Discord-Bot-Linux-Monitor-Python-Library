@@ -44,12 +44,36 @@ from discord.app_commands.models import AppCommand
 from discord import app_commands
 from discord.ext import commands
 import json
-from typing import List, Union, Awaitable, Callable, Any, Dict, Optional
+from typing import List, Union, Awaitable, Callable, Any, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 
 import asyncio
-
+import functools
+import time
 import logging
+
+
+class ConfirmationView(discord.ui.View):
+    """Confirmation dialog for dangerous commands."""
+    def __init__(self, timeout: float = 30.0):
+        super().__init__(timeout=timeout)
+        self.confirmed: bool = False
+
+    @discord.ui.button(label="✅ Confirm", style=discord.ButtonStyle.red)
+    async def confirm_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.confirmed = True
+        await interaction.response.defer()
+        self.stop()
+
+    @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.gray)
+    async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.confirmed = False
+        await interaction.response.defer()
+        self.stop()
+
+    async def on_timeout(self) -> None:
+        self.confirmed = False
+
 
 class DiscordBotLinuxMonitor:
 
@@ -165,6 +189,28 @@ class DiscordBotLinuxMonitor:
     #endregion
 
     #region Private methods
+
+    def _get_utc_timestamp(self) -> str:
+        """Get current timestamp in UTC with timezone info."""
+        return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+    def _log_command_audit(self, user: discord.User, guild: Optional[discord.Guild], channel: Optional[discord.TextChannel], command: str, details: str = "") -> None:
+        """Log command execution for audit trail."""
+        timestamp = self._get_utc_timestamp()
+        guild_name = guild.name if guild else "Unknown"
+        channel_name = channel.name if channel else "Unknown"
+        details_str = f" | {details}" if details else ""
+        logging.info(msg=f"[AUDIT] {timestamp} | User: {user} (ID: {user.id}) | Guild: {guild_name} | Channel: #{channel_name} | Command: {command}{details_str}")
+
+    @functools.lru_cache(maxsize=128)
+    def _get_cached_command_names(self, is_private: bool) -> List[Tuple[str, str]]:
+        """Cache command names permanently since they never change at runtime."""
+        return self.monitoring.get_command_names(is_private=is_private)
+
+    @functools.lru_cache(maxsize=128)
+    def _get_cached_service_names(self, is_private: bool) -> List[Tuple[str, str]]:
+        """Cache service names permanently since they never change at runtime."""
+        return self.monitoring.get_service_names(is_private=is_private)
 
     def _check_if_valid_guild(self, guild: Union[None,discord.Guild]) -> bool:
         if guild is None:
@@ -325,7 +371,7 @@ class DiscordBotLinuxMonitor:
 
         embed.add_field(name="🕗 Last deleted message", value=(last_deleted_preview if last_deleted_preview != "" else "N/A")[:1024], inline=False)
 
-        embed.set_footer(text=f"Bot v{__version__} • Last update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        embed.set_footer(text=f"Bot v{__version__} • Last update: {self._get_utc_timestamp()}")
         return embed
 
     def _infer_embed_color(self, text: str, is_error: bool = False) -> "discord.Color":
@@ -339,7 +385,7 @@ class DiscordBotLinuxMonitor:
     def _build_result_embed(self, title: str, description: str, color: "discord.Color") -> "discord.Embed":
         embed = discord.Embed(title=title[:256], color=color)
         embed.description = (description if description.strip() != "" else "No answer.")[:4096]
-        embed.set_footer(text=f"Bot v{__version__} • {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        embed.set_footer(text=f"Bot v{__version__} • {self._get_utc_timestamp()}")
         return embed
 
     def _split_text_for_embed(self, text: str, max_length: int = 4000) -> List[str]:
@@ -356,10 +402,13 @@ class DiscordBotLinuxMonitor:
         return chunks
 
     async def _interaction_followup_send_embed(self, interaction: discord.Interaction, title: str, msg: str, icon: str = "", is_error: bool = False, ephemeral: bool = False) -> None:
+        """Send an embed message via interaction followup. Handles chunking for long messages and prevents duplicate sends."""
         if msg is None or msg.strip() == "":
             msg = "No answer."
 
-        logging.info(msg=f"Sending embed follow-up '{title}':\n{msg}")
+        # Only log info for non-error responses to reduce log spam
+        if not is_error:
+            logging.info(msg=f"Sending embed follow-up '{title}'")
 
         color: "discord.Color" = self._infer_embed_color(text=msg, is_error=is_error)
         display_title: str = f"{icon} {title}".strip()
@@ -369,7 +418,12 @@ class DiscordBotLinuxMonitor:
             for index, chunk in enumerate(chunks):
                 page_title: str = display_title if len(chunks) == 1 else f"{display_title} ({index + 1}/{len(chunks)})"
                 embed: "discord.Embed" = self._build_result_embed(title=page_title, description=chunk, color=color)
-                await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+                try:
+                    await interaction.followup.send(embed=embed, ephemeral=ephemeral)
+                except discord.InteractionResponded:
+                    # Already responded, skip
+                    logging.debug(msg=f"Interaction already responded for {title}")
+                    return
         except Exception as e:
             logging.error(msg=f"Error while sending embed follow-up message: {e}")
 
@@ -767,10 +821,28 @@ class DiscordBotLinuxMonitor:
             await interaction.response.send_message(content="❌ Public channels do not allow this command.", ephemeral=True)
             return
 
-        # Say to the user that the command is being processed
-        await interaction.response.defer()
+        # Show confirmation dialog
+        await interaction.response.defer(ephemeral=True)
+
+        view = ConfirmationView()
+        confirmation_msg = await interaction.followup.send(
+            content="⚠️ **DANGEROUS OPERATION** ⚠️\n\nYou are about to reboot the entire server. This will disconnect all users and services!\n\nAre you sure?",
+            view=view,
+            ephemeral=True
+        )
+
+        await view.wait()
+
+        if not view.confirmed:
+            await confirmation_msg.edit(content="❌ Server reboot cancelled.", view=None)
+            self._log_command_audit(interaction.user, interaction.guild, interaction.channel, "reboot", "CANCELLED")
+            return
+
+        # Log the audit trail
+        self._log_command_audit(interaction.user, interaction.guild, interaction.channel, "reboot", "CONFIRMED")
 
         try:
+            await confirmation_msg.edit(content="⏳ Rebooting server...", view=None)
             out_msg: str = await self.monitoring.reboot_server()
             await self._interaction_followup_send_embed(interaction=interaction, title="Server Reboot", icon="🔁", msg=out_msg)
 
@@ -805,6 +877,9 @@ class DiscordBotLinuxMonitor:
         if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
             return
 
+        # Log the audit trail
+        self._log_command_audit(interaction.user, interaction.guild, interaction.channel, "restart_all")
+
         # Say to the user that the command is being processed
         await interaction.response.defer()
 
@@ -825,6 +900,9 @@ class DiscordBotLinuxMonitor:
             return
         if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
             return
+
+        # Log the audit trail
+        self._log_command_audit(interaction.user, interaction.guild, interaction.channel, "restart_service", f"service={service_name}")
 
         # Indiquer que la commande est en cours de traitement
         await interaction.response.defer()
@@ -847,6 +925,9 @@ class DiscordBotLinuxMonitor:
             return
         if not (await self._is_bot_channel_interaction(interaction=interaction, send_message_if_not_bot=True)):
             return
+
+        # Log the audit trail
+        self._log_command_audit(interaction.user, interaction.guild, interaction.channel, "stop_service", f"service={service_name}")
 
         # Indiquer que la commande est en cours de traitement
         await interaction.response.defer()
@@ -937,6 +1018,9 @@ class DiscordBotLinuxMonitor:
             await interaction.response.send_message(content="❌ Public channels do not allow this command.", ephemeral=True)
             return
 
+        # Log the audit trail
+        self._log_command_audit(interaction.user, interaction.guild, interaction.channel, "kill_process", f"pid={pid}")
+
         # Indiquer que la commande est en cours de traitement
         await interaction.response.defer()
 
@@ -977,6 +1061,9 @@ class DiscordBotLinuxMonitor:
             return
 
         await interaction.response.defer(ephemeral=True)
+
+        # Log the audit trail for this destructive action
+        self._log_command_audit(interaction.user, interaction.guild, interaction.channel, "clear_channel_messages", f"target_channel=#{channel.name}")
 
         deleted_count: int = 0
         rate_limit_retries: int = 0
@@ -1198,7 +1285,7 @@ class DiscordBotLinuxMonitor:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
             current_lower: str = current.lower()
             choices: List["app_commands.Choice[str]"] = []
-            for command_name, display_name in self.monitoring.get_command_names(is_private=is_private):
+            for command_name, display_name in self._get_cached_command_names(is_private=is_private):
                 if current_lower == "" or current_lower in command_name.lower() or current_lower in display_name.lower():
                     label: str = f"{command_name} — {display_name}"
                     choices.append(app_commands.Choice(name=label[:100], value=command_name))
@@ -1215,7 +1302,7 @@ class DiscordBotLinuxMonitor:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
             current_lower: str = current.lower()
             choices: List["app_commands.Choice[str]"] = []
-            for service_name, display_name in self.monitoring.get_service_names(is_private=is_private):
+            for service_name, display_name in self._get_cached_service_names(is_private=is_private):
                 if current_lower == "" or current_lower in service_name.lower() or current_lower in display_name.lower():
                     label: str = f"{service_name} — {display_name}"
                     choices.append(app_commands.Choice(name=label[:100], value=service_name))
