@@ -23,10 +23,10 @@ It is compatible with python 3+ and usable only on Linux.
 Displayed infos are not the same if you do the command in private or public channel (all info are displayed in private channel, some are hidden from public channels)
 
  - `/usage`: 📊 View disk space, Load average, CPU, RAM, ... 📊
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/usage.jpg" height="400">
+ <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/usage.jpg" height="500">
 
  - `/os_infos`: 🖥 View basic system information 🖥
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/os_infos.jpg" height="300">
+ <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/os_infos.jpg" height="250">
 
  - `/ping`: 🌐 Ping websites 🌐
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/ping.jpg" height="150">
@@ -41,8 +41,6 @@ Displayed infos are not the same if you do the command in private or public chan
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/services_status.jpg" height="150">
 
  - `/restart_all`: 🚀 Restart all services 🚀
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/restart_all.jpg" height="150">
-
  - `/restart_service {service_name}`: 🚀 Restart a service 🚀
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/restart_service.jpg" height="150">
 
@@ -50,7 +48,7 @@ Displayed infos are not the same if you do the command in private or public chan
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/stop_service.jpg" height="150">
 
  - `/list_services`: 📋 List all available services 📋
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_services.jpg" height="150">
+ <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_services.jpg" height="250">
 
  - `/ports`: 🔒 Check ports 🔒
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/ports.jpg" height="200">
@@ -61,10 +59,9 @@ Displayed infos are not the same if you do the command in private or public chan
  - `/version`: 🤖 Show current bot version 🤖
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/version.jpg" height="150">
 
- - `/execute_command {command_name} [parameters]`: 🚀 Execute a command (optional parameters, only for commands with `accept_parameters` or a `{arg1}`/`{args}` placeholder) 🚀
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/execute_command.jpg" height="150">
-
  - `/execute_all_commands`: 🚀 Execute all commands 🚀
+ - `/execute_command {command_name} [parameters]`: 🚀 Execute a command (optional parameters, only for commands with `accept_parameters` or a `{arg1}`/`{args}` placeholder) 🚀
+ <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/execute_command.jpg" height="250">
 
 ### Private discord channel commands:
  - `/force_sync`: 🔄 Force discord command synchronization 🔄
@@ -77,7 +74,6 @@ Displayed infos are not the same if you do the command in private or public chan
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/user_logins.jpg" height="150">
 
  - `/reboot_server`: 🔄 Restart the entire server 🔄
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/reboot_server.jpg" height="150">
 
  - `/list_processes`: 📋 List active processes 📋
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_processes.jpg" height="200">
@@ -86,10 +82,10 @@ Displayed infos are not the same if you do the command in private or public chan
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/kill_process.jpg" height="200">
 
  - `/clear_channel_messages {channel}`: 🧹 Remove all messages from a target channel (can clean any channel, command itself is private-only) 🧹
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/clear_channel_messages.jpg" height="150">
+ <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/clear_channel_messages.jpg" height="200">
 
  - `/list_clearable_channels`: 🧹 List text channels and whether the bot can clear them (View + Read History + Manage Messages), private-only 🧹
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_clearable_channels.jpg" height="150">
+ <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/list_clearable_channels.jpg" height="200">
 
 ## How to install (for first launch)
 
