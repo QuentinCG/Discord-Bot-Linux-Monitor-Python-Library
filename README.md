@@ -65,7 +65,7 @@ Displayed infos are not the same if you do the command in private or public chan
 
 ### Private discord channel commands:
  - `/force_sync`: 🔄 Force discord command synchronization 🔄
- <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/force_sync.jpg" height="300">
+ <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/force_sync.jpg" height="500">
 
  - `/users`: 👥 View connected users 👥
  <img src="https://raw.githubusercontent.com/QuentinCG/Discord-Bot-Linux-Monitor-Python-Library/master/example/users.jpg" height="150">
