@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.7.2 (2026/08/29)"
+__version__ = "1.7.3 (2026/09/03)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -49,6 +49,7 @@ from datetime import datetime, timedelta, timezone
 
 import asyncio
 import functools
+import os
 import time
 import logging
 
@@ -120,7 +121,7 @@ class DiscordBotLinuxMonitor:
 
     def __init__(self, config_file: str, force_sync_on_startup: bool) -> None:
         logging.debug(msg=f"Loading configuration file {config_file}...")
-        with open(file=config_file, mode='r') as file:
+        with open(file=config_file, mode='r', encoding='utf-8') as file:
             self.config = json.load(file)
 
         # Check if the configuration is correct
@@ -140,6 +141,14 @@ class DiscordBotLinuxMonitor:
         
         # Initialize cleanup task
         self.cleanup_task: Optional[asyncio.Task] = None
+
+        # Discord calls on_ready on every gateway (re)identification, not only once per process:
+        # this guard avoids re-sending welcome messages and starting duplicated scheduled tasks.
+        self.startup_done: bool = False
+        self.process_start_time: datetime = datetime.now()
+        self.gateway_ready_count: int = 0
+        self.gateway_disconnect_count: int = 0
+        self.gateway_resume_count: int = 0
 
     def _init_and_check_configuration(self) -> None:
         """
@@ -708,7 +717,19 @@ class DiscordBotLinuxMonitor:
     #region BOT COMMANDS AND EVENTS DEFINITIONS
 
     async def on_ready(self) -> None:
-        logging.info(msg=f"Discord bot '{self.bot.user}' is ready.")
+        self.gateway_ready_count += 1
+        logging.info(msg=f"Discord bot '{self.bot.user}' is ready (READY #{self.gateway_ready_count}, process running since {self.process_start_time.isoformat(sep=' ', timespec='seconds')}).")
+
+        if self.startup_done:
+            # The process did NOT restart: Discord simply forced a new gateway session (network loss,
+            # gateway maintenance, invalidated session, ...). Redoing the startup would duplicate the
+            # welcome messages and, more importantly, the periodic monitoring tasks.
+            uptime_in_sec: float = (datetime.now() - self.process_start_time).total_seconds()
+            logging.warning(msg=f"Discord gateway session re-established (READY #{self.gateway_ready_count}, {self.gateway_disconnect_count} disconnections, {self.gateway_resume_count} resumes, process uptime {uptime_in_sec:.0f}sec). Startup already done, skipping welcome messages and scheduled tasks creation.")
+            return
+
+        self.startup_done = True
+
         logging.info(msg=f"Connected to the following guilds (will check them): {[guild.name for guild in self.bot.guilds]}")
         for guild in self.bot.guilds:
             if guild.id == self.server_id:
@@ -827,6 +848,20 @@ class DiscordBotLinuxMonitor:
         # Setup periodic channel cleanup task
         await self._setup_periodic_cleanup_task()
 
+    async def on_disconnect(self) -> None:
+        """
+        Called when the gateway connection is lost. Useful to know if a "restart" was only a reconnection.
+        """
+        self.gateway_disconnect_count += 1
+        logging.warning(msg=f"Discord gateway disconnected (#{self.gateway_disconnect_count}), discord.py will try to reconnect automatically.")
+
+    async def on_resumed(self) -> None:
+        """
+        Called when the gateway session is resumed (no new READY, so no welcome message).
+        """
+        self.gateway_resume_count += 1
+        logging.info(msg=f"Discord gateway session resumed (#{self.gateway_resume_count}).")
+
     async def force_sync(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
             return
@@ -855,7 +890,9 @@ class DiscordBotLinuxMonitor:
         out_msg: str = (
             f"🤖 Discord bot version: {__version__}\n"
             f"- Linux Monitor library version: {self.monitoring.get_raw_version()}\n"
-            f"- 🐍 Python compatibility: {__python_version__}"
+            f"- 🐍 Python compatibility: {__python_version__}\n"
+            f"- ⏱️ Bot process started on {self.process_start_time.strftime('%d/%m/%Y %H:%M:%S')} (PID {os.getpid()})\n"
+            f"- 🔌 Gateway: {self.gateway_ready_count} ready, {self.gateway_disconnect_count} disconnections, {self.gateway_resume_count} resumes"
         )
         embed = self._build_result_embed(title="🤖 Bot Version", description=out_msg, color=discord.Color.blurple())
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -1016,7 +1053,7 @@ class DiscordBotLinuxMonitor:
 
         try:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
-            out_msg: str = self.monitoring.check_all_certificates(is_private=is_private, display_only_if_critical=False)
+            out_msg: str = await self.monitoring.check_all_certificates(is_private=is_private, display_only_if_critical=False)
 
             # Respond to the user
             await self._interaction_followup_send_embed(interaction=interaction, title="SSL Certificates", icon="🔒", msg=out_msg)

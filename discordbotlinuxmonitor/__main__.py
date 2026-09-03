@@ -51,6 +51,14 @@ def main() -> None:
     async def on_ready() -> None: # type: ignore
         await discord_bot_linux_monitor.on_ready()
 
+    @discord_bot.event
+    async def on_disconnect() -> None: # type: ignore
+        await discord_bot_linux_monitor.on_disconnect()
+
+    @discord_bot.event
+    async def on_resumed() -> None: # type: ignore
+        await discord_bot_linux_monitor.on_resumed()
+
     @discord_bot.tree.command(name="force_sync", description="[Private] 🔄 Force command synchronization 🔄")
     @app_commands.checks.cooldown(3, 20.0)
     async def force_sync(interaction: discord.Interaction) -> None: # type: ignore

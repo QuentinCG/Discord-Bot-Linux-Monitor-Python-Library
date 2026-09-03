@@ -49,6 +49,8 @@
         "warning_temperature_celsius": 70.0,
         "critical_uptime_seconds": 600,
         "warning_uptime_seconds": 3600,
+        "network_retry_count": 3,
+        "network_retry_delay_in_sec": 3,
         "excluded_interfaces": [
             "lo",
             "docker0",
@@ -90,6 +92,9 @@
             "website": "google.com",
             "display_name": "Google",
             "timeout_in_sec": 5,
+            "ping_count": 3,
+            "retry_count": 3,
+            "retry_delay_in_sec": 3,
             "is_private": false
         },
         {
@@ -110,6 +115,8 @@
             "url": "https://google.com",
             "display_name": "Google",
             "timeout_in_sec": 5,
+            "retry_count": 3,
+            "retry_delay_in_sec": 3,
             "is_private": false,
             "show_content_if_issue": true,
             "service_name_to_restart": "web"
@@ -211,6 +218,9 @@
             "display_name": "Example of valid certificate",
             "warning_remaining_days": 15,
             "critical_remaining_days": 5,
+            "timeout_in_sec": 5,
+            "retry_count": 3,
+            "retry_delay_in_sec": 3,
             "is_private": false
         },
         {
