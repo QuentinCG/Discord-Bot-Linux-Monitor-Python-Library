@@ -6,6 +6,7 @@ import logging
 
 import discord
 from discord import app_commands
+from discord.ext import commands
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='System Management Tool controled from Discord')
@@ -58,6 +59,14 @@ def main() -> None:
     @discord_bot.event
     async def on_resumed() -> None: # type: ignore
         await discord_bot_linux_monitor.on_resumed()
+
+    @discord_bot.event
+    async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
+        """Ignore unknown legacy commands typed with the slash prefix."""
+        if isinstance(error, commands.CommandNotFound):
+            logging.debug(msg=f"Ignoring unknown legacy command: {ctx.message.content!r}")
+            return
+        logging.error(msg=f"Unhandled legacy command error: {error}")
 
     @discord_bot.tree.command(name="force_sync", description="[Private] 🔄 Force command synchronization 🔄")
     @app_commands.checks.cooldown(3, 20.0)

@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.7.3 (2026/09/03)"
+__version__ = "1.7.4 (2026/09/19)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -138,7 +138,8 @@ class DiscordBotLinuxMonitor:
         # Initialize the bot
         self.force_sync_on_startup: bool = force_sync_on_startup
         intents: discord.Intents = discord.Intents.default()
-        self.bot = commands.Bot(command_prefix=self.command_prefix, intents=intents)
+        legacy_command_prefix = "!" if self.command_prefix == "/" else self.command_prefix
+        self.bot = commands.Bot(command_prefix=legacy_command_prefix, intents=intents)
         
         # Initialize cleanup task
         self.cleanup_task: Optional[asyncio.Task] = None
