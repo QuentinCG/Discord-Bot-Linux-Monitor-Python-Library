@@ -63,7 +63,7 @@ def main() -> None:
     @discord_bot.event
     async def on_socket_response(payload: dict) -> None:
         """Log raw application-command interactions before command dispatch."""
-        if payload.get("t") == 2:
+        if payload.get("t") == "INTERACTION_CREATE":
             logging.info(msg=f"Received INTERACTION_CREATE payload: {payload.get('d')!r}")
 
     @discord_bot.event
