@@ -61,6 +61,12 @@ def main() -> None:
         await discord_bot_linux_monitor.on_resumed()
 
     @discord_bot.event
+    async def on_socket_response(payload: dict) -> None:
+        """Log raw application-command interactions before command dispatch."""
+        if payload.get("t") == 2:
+            logging.info(msg=f"Received INTERACTION_CREATE payload: {payload.get('d')!r}")
+
+    @discord_bot.event
     async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
         """Ignore unknown legacy commands typed with the slash prefix."""
         if isinstance(error, commands.CommandNotFound):
@@ -204,6 +210,10 @@ def main() -> None:
     @discord_bot.tree.error
     async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError) -> None: # type: ignore
         """Handle cooldown and other command errors gracefully."""
+        logging.error(
+            msg=f"Application command error: command={interaction.command!r}, data={interaction.data!r}, error={error!r}",
+            exc_info=(type(error), error, error.__traceback__),
+        )
         if isinstance(error, app_commands.CommandOnCooldown):
             retry_after = error.retry_after
             await interaction.response.send_message(
@@ -216,7 +226,6 @@ def main() -> None:
                 ephemeral=True
             )
         else:
-            logging.error(msg=f"Unhandled command error: {error}")
             try:
                 await interaction.response.send_message(
                     content="❌ An unexpected error occurred. Please try again later.",
