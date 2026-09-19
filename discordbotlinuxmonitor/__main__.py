@@ -61,10 +61,11 @@ def main() -> None:
         await discord_bot_linux_monitor.on_resumed()
 
     @discord_bot.event
-    async def on_socket_response(payload: dict) -> None:
-        """Log raw application-command interactions before command dispatch."""
-        if payload.get("t") == "INTERACTION_CREATE":
-            logging.info(msg=f"Received INTERACTION_CREATE payload: {payload.get('d')!r}")
+    async def on_interaction(interaction: discord.Interaction) -> None:
+        """Log incoming interactions before application-command dispatch."""
+        logging.info(
+            msg=f"Received interaction: type={interaction.type!r}, data={interaction.data!r}"
+        )
 
     @discord_bot.event
     async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
