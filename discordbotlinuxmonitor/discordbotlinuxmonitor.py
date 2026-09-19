@@ -44,7 +44,7 @@ from discord.app_commands.models import AppCommand
 from discord import app_commands
 from discord.ext import commands
 import json
-from typing import List, Union, Awaitable, Callable, Any, Dict, Optional, Tuple
+from typing import List, Union, Awaitable, Callable, Any, Dict, Optional, Tuple, cast
 from datetime import datetime, timedelta, timezone
 
 import asyncio
@@ -88,8 +88,8 @@ class PaginationView(discord.ui.View):
 
     def _update_button_states(self) -> None:
         """Update button disabled states based on current page."""
-        self.prev_button.disabled = self.current_page <= 0
-        self.next_button.disabled = self.current_page >= self.total_pages - 1
+        cast(discord.ui.Button, self.prev_button).disabled = self.current_page <= 0
+        cast(discord.ui.Button, self.next_button).disabled = self.current_page >= self.total_pages - 1
 
     @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.gray)
     async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -112,7 +112,8 @@ class PaginationView(discord.ui.View):
     async def on_timeout(self) -> None:
         """Disable buttons after timeout."""
         for item in self.children:
-            item.disabled = True
+            if isinstance(item, discord.ui.Button):
+                item.disabled = True
 
 
 class DiscordBotLinuxMonitor:
@@ -245,11 +246,11 @@ class DiscordBotLinuxMonitor:
         """Get current timestamp in UTC with timezone info."""
         return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
 
-    def _log_command_audit(self, user: discord.User, guild: Optional[discord.Guild], channel: Optional[discord.TextChannel], command: str, details: str = "") -> None:
+    def _log_command_audit(self, user: discord.abc.User, guild: Optional[discord.Guild], channel: Optional[object], command: str, details: str = "") -> None:
         """Log command execution for audit trail."""
         timestamp = self._get_utc_timestamp()
         guild_name = guild.name if guild else "Unknown"
-        channel_name = channel.name if channel else "Unknown"
+        channel_name = getattr(channel, "name", "Unknown") if channel else "Unknown"
         details_str = f" | {details}" if details else ""
         logging.info(msg=f"[AUDIT] {timestamp} | User: {user} (ID: {user.id}) | Guild: {guild_name} | Channel: #{channel_name} | Command: {command}{details_str}")
 
@@ -510,8 +511,8 @@ class DiscordBotLinuxMonitor:
                         self._update_buttons()
 
                     def _update_buttons(self) -> None:
-                        self.prev_btn.disabled = self.current_page <= 0
-                        self.next_btn.disabled = self.current_page >= len(self.chunks) - 1
+                        cast(discord.ui.Button, self.prev_btn).disabled = self.current_page <= 0
+                        cast(discord.ui.Button, self.next_btn).disabled = self.current_page >= len(self.chunks) - 1
 
                     async def _update_embed(self, interaction: discord.Interaction) -> None:
                         chunk = self.chunks[self.current_page]
@@ -537,7 +538,8 @@ class DiscordBotLinuxMonitor:
 
                     async def on_timeout(self) -> None:
                         for item in self.children:
-                            item.disabled = True
+                            if isinstance(item, discord.ui.Button):
+                                item.disabled = True
                         if self.message:
                             try:
                                 await self.message.edit(view=self)
@@ -576,11 +578,7 @@ class DiscordBotLinuxMonitor:
     async def _delete_message_with_rate_limit_retry(self, message: discord.Message, reason: str, max_retries: int = 10, on_rate_limit: Optional[Callable[[], None]] = None) -> None:
         for attempt in range(max_retries + 1):
             try:
-                try:
-                    await message.delete(reason=reason)
-                except TypeError:
-                    # Some discord.py objects (e.g. PartialMessage) do not accept `reason`.
-                    await message.delete()
+                await message.delete()
                 return
             except discord.NotFound:
                 return
@@ -601,11 +599,7 @@ class DiscordBotLinuxMonitor:
         for attempt in range(max_retries + 1):
             try:
                 if len(messages) == 1:
-                    try:
-                        await messages[0].delete(reason=reason)
-                    except TypeError:
-                        # Some discord.py objects (e.g. PartialMessage) do not accept `reason`.
-                        await messages[0].delete()
+                    await messages[0].delete()
                 else:
                     await channel.delete_messages(messages, reason=reason)
                 return
@@ -1075,11 +1069,11 @@ class DiscordBotLinuxMonitor:
         await interaction.response.defer(ephemeral=True)
 
         view = ConfirmationView()
-        confirmation_msg = await interaction.followup.send(
+        confirmation_msg: discord.WebhookMessage = cast(discord.WebhookMessage, await interaction.followup.send(
             content="⚠️ **DANGEROUS OPERATION** ⚠️\n\nYou are about to reboot the entire server. This will disconnect all users and services!\n\nAre you sure?",
             view=view,
             ephemeral=True
-        )
+        ))
 
         await view.wait()
 

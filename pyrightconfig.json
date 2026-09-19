@@ -1,0 +1,9 @@
+{
+  "include": ["discordbotlinuxmonitor"],
+  "exclude": ["**/__pycache__", "**/node_modules", "**/.*", ".venv"],
+  "typeCheckingMode": "basic",
+  "reportCallIssue": "error",
+  "reportAttributeAccessIssue": "error",
+  "reportMissingImports": "error",
+  "reportMissingTypeStubs": "none"
+}
