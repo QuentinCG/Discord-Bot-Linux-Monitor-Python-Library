@@ -33,7 +33,7 @@ __email__ = "quentin@comte-gaz.com"
 __license__ = "MIT License"
 __copyright__ = "Copyright Quentin Comte-Gaz (2026)"
 __python_version__ = "3.+"
-__version__ = "1.7.9 (2026/09/19)"
+__version__ = "1.7.10 (2026/09/19)"
 __status__ = "Usable for any Linux project"
 
 # pyright: reportMissingTypeStubs=false
@@ -1155,15 +1155,14 @@ class DiscordBotLinuxMonitor:
             # Redémarrer le service et récupérer le message de sortie
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
             out_msg: str = await self.monitoring.restart_service(is_private=is_private, service_name=service_name, force_restart=True)
-            out_msg = f"Parameters received: service_name={service_name!r}\n{out_msg}"
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_embed(interaction=interaction, title="Restart Service", icon="🔄", msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Restart Service" + f" — {service_name}", icon="🔄", msg=out_msg)
 
         except Exception as e:
-            out_msg = f"**Internal error restarting service**\nParameters received: service_name={service_name!r}\n```sh\n{e}\n```"
+            out_msg = f"**Internal error restarting service {service_name}**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_embed(interaction=interaction, title="Restart Service", icon="🔄", msg=out_msg, is_error=True)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Restart Service" + f" — {service_name}", icon="🔄", msg=out_msg, is_error=True)
 
     async def stop_service(self, interaction: discord.Interaction, service_name: str) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1181,14 +1180,13 @@ class DiscordBotLinuxMonitor:
             # Arrêter le service et récupérer le message de sortie
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
             out_msg: str = await self.monitoring.stop_service(is_private=is_private, service_name=service_name)
-            out_msg = f"Parameters received: service_name={service_name!r}\n{out_msg}"
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_embed(interaction=interaction, title="Stop Service", icon="🛑", msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Stop Service" + f" — {service_name}", icon="🛑", msg=out_msg)
         except Exception as e:
-            out_msg = f"**Internal error stopping service**\nParameters received: service_name={service_name!r}\n```sh\n{e}\n```"
+            out_msg = f"**Internal error stopping service {service_name}**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_embed(interaction=interaction, title="Stop Service", icon="🛑", msg=out_msg, is_error=True)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Stop Service" + f" — {service_name}", icon="🛑", msg=out_msg, is_error=True)
 
     async def list_services(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1273,14 +1271,13 @@ class DiscordBotLinuxMonitor:
         try:
             # Arrêter le processus et récupérer le message de sortie
             out_msg: str = await self.monitoring.kill_process(pid=pid)
-            out_msg = f"Parameters received: pid={pid!r}\n{out_msg}"
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_embed(interaction=interaction, title="Kill Process", icon="☠️", msg=out_msg)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Kill Process" + f" — PID {pid}", icon="☠️", msg=out_msg)
         except Exception as e:
-            out_msg = f"**Internal error stopping process**\nParameters received: pid={pid!r}\n```sh\n{e}\n```"
+            out_msg = f"**Internal error stopping process of PID {pid}**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_embed(interaction=interaction, title="Kill Process", icon="☠️", msg=out_msg, is_error=True)
+            await self._interaction_followup_send_embed(interaction=interaction, title="Kill Process" + f" — PID {pid}", icon="☠️", msg=out_msg, is_error=True)
 
     async def clear_channel_messages(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
@@ -1421,10 +1418,6 @@ class DiscordBotLinuxMonitor:
         except discord.HTTPException as e:
             if e.status == 429:
                 _on_rate_limit_hit()
-            error_text = (
-                f"Discord API error (status {e.status}): {e}\n"
-                f"Parameters received: channel={channel.name!r}"
-            )
             embed = self._build_cleanup_embed(
                 channel_name=channel.name,
                 state="error",
@@ -1433,12 +1426,11 @@ class DiscordBotLinuxMonitor:
                 elapsed_seconds=asyncio.get_running_loop().time() - started_monotonic,
                 last_deleted_preview=last_deleted_message_preview,
                 scanned_count=scanned_count,
-                error_text=error_text,
+                error_text=f"Discord API error (status {e.status}): {e}",
             )
             logging.exception(msg=f"Discord API error while clearing messages in channel '{channel.name}': {e}")
             await interaction.edit_original_response(content=None, embed=embed)
         except Exception as e:
-            error_text = f"{e}\nParameters received: channel={channel.name!r}"
             embed = self._build_cleanup_embed(
                 channel_name=channel.name,
                 state="error",
@@ -1447,9 +1439,9 @@ class DiscordBotLinuxMonitor:
                 elapsed_seconds=asyncio.get_running_loop().time() - started_monotonic,
                 last_deleted_preview=last_deleted_message_preview,
                 scanned_count=scanned_count,
-                error_text=error_text,
+                error_text=str(e),
             )
-            logging.exception(msg=f"Internal error while clearing messages in channel '{channel.name}' with parameters channel={channel.name!r}: {e}")
+            logging.exception(msg=f"Internal error while clearing messages in channel '{channel.name}': {e}")
             await interaction.edit_original_response(content=None, embed=embed)
         finally:
             heartbeat_stop_event.set()
@@ -1724,10 +1716,14 @@ class DiscordBotLinuxMonitor:
                 out_msg += f"**/{cmd}** — {info['desc']}\n"
                 out_msg += f"  └─ {private_indicator} | ⏳ Cooldown: {info['cooldown']}\n\n"
 
-            out_msg = f"Parameters received: command_name={command_name!r}\n{out_msg}"
-            await self._interaction_followup_send_embed(interaction=interaction, title="Discord Bot Commands Help", icon="🔍", msg=out_msg)
+            if command_name:
+                title = f"Help for command '{command_name}'"
+            else:
+                title = "Discord Bot Commands Help"
+
+            await self._interaction_followup_send_embed(interaction=interaction, title=title, icon="🔍", msg=out_msg)
         except Exception as e:
-            out_msg = f"**Internal error retrieving help**:\nParameters received: command_name={command_name!r}\n```sh\n{e}\n```"
+            out_msg = f"**Internal error retrieving help**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
             await self._interaction_followup_send_embed(interaction=interaction, title="Help", icon="🔍", msg=out_msg, is_error=True)
 
@@ -1775,18 +1771,24 @@ class DiscordBotLinuxMonitor:
         # Indiquer que la commande est en cours de traitement
         await interaction.response.defer()
 
+        if parameters:
+            title = f"Execute Command — {command_name} {parameters}"
+        else:
+            title = f"Execute Command — {command_name}"
+
         try:
             is_private: bool = self._is_private_channel(channel=interaction.channel) # type: ignore
             # Exécuter la commande demandée
             out_msg: str = await self.monitoring.execute_command(is_private=is_private, command_name=command_name, parameters=parameters)
-            out_msg = f"Parameters received: command_name={command_name!r}, parameters={parameters!r}\n{out_msg}"
 
             # Répondre à l'utilisateur
-            await self._interaction_followup_send_embed(interaction=interaction, title=f"Execute Command — {command_name}", icon="▶️", msg=out_msg)
+            # On y inclu les params que si fournis, pour que l'utilisateur voie ce qu'il a demandé.
+
+            await self._interaction_followup_send_embed(interaction=interaction, title=title, icon="▶️", msg=out_msg)
         except Exception as e:
-            out_msg = f"**Internal error executing command '{command_name}'**:\nParameters received: command_name={command_name!r}, parameters={parameters!r}\n```sh\n{e}\n```"
+            out_msg = f"**Internal error executing command '{command_name}'**:\n```sh\n{e}\n```"
             logging.exception(msg=out_msg)
-            await self._interaction_followup_send_embed(interaction=interaction, title=f"Execute Command — {command_name}", icon="▶️", msg=out_msg, is_error=True)
+            await self._interaction_followup_send_embed(interaction=interaction, title=title, icon="▶️", msg=out_msg, is_error=True)
 
     async def execute_all_commands(self, interaction: discord.Interaction) -> None:
         if not self._check_if_valid_guild(guild=interaction.guild):
